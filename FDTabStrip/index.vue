@@ -108,6 +108,8 @@ export default class FDTabStrip extends FdControlVue {
   $el: HTMLDivElement;
 
   // isScroll = true;
+  scrollButtonHeight: number = 0
+  scrollButtonWidth: number = 0
   viewMenu: boolean = false;
   top: string = '0px';
   left: string = '0px';
@@ -240,9 +242,11 @@ export default class FDTabStrip extends FdControlVue {
    *
    */
   isChecked (value: selectedTab) {
-    this.updatedValue = value.indexValue
-    this.updateDataModel({ propertyName: 'Value', value: value.indexValue })
-    this.focusPage()
+    if (this.isActivated) {
+      this.updatedValue = value.indexValue
+      this.updateDataModel({ propertyName: 'Value', value: value.indexValue })
+      this.focusPage()
+    }
   }
 
   /**
@@ -360,9 +364,9 @@ export default class FDTabStrip extends FdControlVue {
       zIndex: '30001',
       marginTop:
         controlProp.TabOrientation === 2 || controlProp.TabOrientation === 3
-          ? `${controlProp.Height! - 20}px`
+          ? `${controlProp.Height! - (this.scrollButtonWidth)}px`
           : controlProp.TabOrientation === 1
-            ? `${controlProp.Height! - 22}px`
+            ? controlProp.TabFixedHeight! > 0 ? `${controlProp.Height! - this.scrollButtonHeight - 3}px` : `${controlProp.Height! - 22}px`
             : '0px',
       transform:
         controlProp.TabOrientation === 2
@@ -375,20 +379,98 @@ export default class FDTabStrip extends FdControlVue {
         : 'none',
       right:
         controlProp.TabOrientation === 3
-          ? '0px'
+          ? controlProp.TabFixedWidth! > 0 ? '-6px' : '0px'
           : controlProp.TabOrientation === 2
-            ? `${controlProp.Width! - 40}px`
+            ? controlProp.TabFixedWidth! > 0 ? `${controlProp.Width! - this.scrollButtonHeight - 14}px` : `${controlProp.Width! - 32}px`
             : '0px',
       top: controlProp.TabOrientation === 2 || controlProp.TabOrientation === 3 ? '-13px' : '0px',
       backgroundColor: 'rgb(238, 238, 238)'
     }
   }
 
+  get setSpinButtonWidth () {
+    let spinButtonWidth: number = 0
+    const tabFixedHeight = this.properties.TabFixedHeight!
+    const tabFixedWidth = this.properties.TabFixedWidth!
+    if (this.properties.TabOrientation === 0) {
+      if (tabFixedHeight! > 13 || tabFixedHeight! === 0) {
+        spinButtonWidth = 22
+      } else {
+        if (tabFixedHeight === 4) { spinButtonWidth = 7 } else if (tabFixedHeight === 5) { spinButtonWidth = 8.5 } else if (tabFixedHeight === 6) { spinButtonWidth = 10 } else if (tabFixedHeight === 7) { spinButtonWidth = 11.5 } else if (tabFixedHeight === 8) { spinButtonWidth = 13 } else if (tabFixedHeight === 9) { spinButtonWidth = 14.5 } else if (tabFixedHeight === 10) { spinButtonWidth = 16 } else if (tabFixedHeight === 11) { spinButtonWidth = 17.5 } else if (tabFixedHeight === 12) { spinButtonWidth = 19 } else if (tabFixedHeight === 13) { spinButtonWidth = 20.5 }
+      }
+    } else if (this.properties.TabOrientation === 1) {
+      if (tabFixedHeight! > 22 || tabFixedHeight! === 0) {
+        spinButtonWidth = 22
+      } else {
+        if (tabFixedHeight! < 7) {
+          spinButtonWidth = 7
+        } else {
+          spinButtonWidth = tabFixedHeight
+        }
+      }
+    } else {
+      if (tabFixedWidth! > 13 || tabFixedWidth! === 0) {
+        spinButtonWidth = 22
+      } else {
+        if (tabFixedWidth === 4) { spinButtonWidth = 7 } else if (tabFixedWidth === 5) { spinButtonWidth = 8.5 } else if (tabFixedWidth === 6) { spinButtonWidth = 10 } else if (tabFixedWidth === 7) { spinButtonWidth = 11.5 } else if (tabFixedWidth === 8) { spinButtonWidth = 13 } else if (tabFixedWidth === 9) { spinButtonWidth = 14.5 } else if (tabFixedWidth === 10) { spinButtonWidth = 16 } else if (tabFixedWidth === 11) { spinButtonWidth = 17.5 } else if (tabFixedWidth === 12) { spinButtonWidth = 19 } else if (tabFixedWidth === 13) { spinButtonWidth = 20.5 }
+      }
+    }
+    this.scrollButtonWidth = spinButtonWidth
+    return spinButtonWidth
+  }
+
+  get setSpinButtonHeight () {
+    let spinButtonHeight: number = 0
+    const tabFixedHeight = this.properties.TabFixedHeight!
+    const tabFixedWidth = this.properties.TabFixedWidth!
+    if (this.properties.TabOrientation === 0) {
+      if (tabFixedHeight! > 13 || tabFixedHeight! === 0) {
+        spinButtonHeight = 18
+      } else {
+        if (tabFixedHeight === 4) { spinButtonHeight = 8 } else if (tabFixedHeight === 5) { spinButtonHeight = 9 } else if (tabFixedHeight === 6) { spinButtonHeight = 10 } else if (tabFixedHeight === 7) { spinButtonHeight = 11 } else if (tabFixedHeight === 8) { spinButtonHeight = 12 } else if (tabFixedHeight === 9) { spinButtonHeight = 13 } else if (tabFixedHeight === 10) { spinButtonHeight = 14 } else if (tabFixedHeight === 11) { spinButtonHeight = 15 } else if (tabFixedHeight === 12) { spinButtonHeight = 16 } else if (tabFixedHeight === 13) { spinButtonHeight = 17 }
+      }
+    } else if (this.properties.TabOrientation === 1) {
+      if (tabFixedHeight! >= 22 || tabFixedHeight! === 0) {
+        spinButtonHeight = 18
+      } else {
+        if (tabFixedHeight! < 8) {
+          spinButtonHeight = 8
+        } else if (tabFixedHeight! === 21) {
+          spinButtonHeight = 17.5
+        } else if (tabFixedHeight! === 20) {
+          spinButtonHeight = 17
+        } else if (tabFixedHeight! === 19) {
+          spinButtonHeight = 16.5
+        } else if (tabFixedHeight! === 18) {
+          spinButtonHeight = 16
+        } else if (tabFixedHeight! === 17) {
+          spinButtonHeight = 15.5
+        } else if (tabFixedHeight! === 16) {
+          spinButtonHeight = 15
+        } else if (tabFixedHeight! === 15) {
+          spinButtonHeight = 14.5
+        } else {
+          spinButtonHeight = tabFixedHeight
+        }
+      }
+    } else {
+      if (tabFixedWidth! > 13 || tabFixedWidth! === 0) {
+        spinButtonHeight = 18
+      } else {
+        if (tabFixedWidth === 4) { spinButtonHeight = 8 } else if (tabFixedWidth === 5) { spinButtonHeight = 9 } else if (tabFixedWidth === 6) { spinButtonHeight = 10 } else if (tabFixedWidth === 7) { spinButtonHeight = 11 } else if (tabFixedWidth === 8) { spinButtonHeight = 12 } else if (tabFixedWidth === 9) { spinButtonHeight = 13 } else if (tabFixedWidth === 10) { spinButtonHeight = 14 } else if (tabFixedWidth === 11) { spinButtonHeight = 15 } else if (tabFixedWidth === 12) { spinButtonHeight = 16 } else if (tabFixedWidth === 13) { spinButtonHeight = 17 }
+      }
+    }
+    this.scrollButtonHeight = spinButtonHeight
+    return spinButtonHeight
+  }
+
   get scrollButtonStyle () {
     const controlProp = this.properties
     return {
       cursor: this.controlCursor,
-      opacity: this.scrolling ? ((this.scrolling.scrollLeft === (this.scrolling.scrollWidth - this.scrolling.clientWidth)) ? '0.4' : '1') : '1'
+      opacity: this.scrolling ? ((this.scrolling.scrollLeft === (this.scrolling.scrollWidth - this.scrolling.clientWidth)) ? '0.4' : '1') : '1',
+      width: this.setSpinButtonWidth + 'px',
+      height: this.setSpinButtonHeight + 'px'
     }
   }
 
@@ -470,7 +552,6 @@ export default class FDTabStrip extends FdControlVue {
     this.scrollButtonVerify()
     this.scrollDisabledValidate()
     this.updateMultiRowforLeftAndRight()
-    this.updateScrollHeight()
     if (this.scrolling) {
       Vue.nextTick(() => {
         this.updateDataModel({ propertyName: 'Height', value: this.properties.Height! + 1 })
@@ -481,14 +562,6 @@ export default class FDTabStrip extends FdControlVue {
     }
   }
 
-  updateScrollHeight () {
-    // debugger
-    const rightBtn = this.buttonStyleRef.children[0] as HTMLButtonElement
-    const leftBtn = this.buttonStyleRef.children[0] as HTMLButtonElement
-    if (this.properties.TabOrientation === 0 || this.properties.TabOrientation === 1) {
-      console.log(this.controlTabsRef)
-    }
-  }
   updateMultiRowforLeftAndRight () {
     let pagecount = this.scrolling.children.length
     const controlProp = this.properties
@@ -558,59 +631,62 @@ export default class FDTabStrip extends FdControlVue {
           }
         }
         const moveHeight = controlProp.Height
-        if (((pagecount) % Math.trunc(count)) !== 0 && controlProp.TabFixedHeight === 0) {
-          const labelHeight = (Math.ceil(moveHeight! / ((pagecount) % Math.trunc(count))) - 16) - 0.5
-          let marginHeight = labelHeight + 15 - parseInt(controlProp.Value !== 0 ? this.rowsCount.substring(0, 2) : this.rowsCount.substring(5, 7))
-          let a = this.rowsCount.split('px ').map((ele) => {
-            if (!isNaN(parseInt(ele))) {
-              return parseInt(ele)
+        if (controlProp.TabFixedHeight === 0) {
+          if (((pagecount) % Math.trunc(count)) !== 0) {
+            const labelHeight = (Math.ceil(moveHeight! / ((pagecount) % Math.trunc(count))) - 16) - 0.5
+            let marginHeight = labelHeight + 15 - parseInt(controlProp.Value !== 0 ? this.rowsCount.substring(0, 2) : this.rowsCount.substring(5, 7))
+            let a = this.rowsCount.split('px ').map((ele) => {
+              if (!isNaN(parseInt(ele))) {
+                return parseInt(ele)
+              }
+            })
+            for (let index = pagecount - ((pagecount) % Math.trunc(count)), j = 0; index < pagecount; index++, j++) {
+              const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
+              const mydivref = this.scrolling.children[index] as HTMLDivElement
+              mydivref.style.marginTop = `${marginHeight * j}px`
+              mydivref.style.height = `${labelHeight + 14}px`
+              myref.style.height = `${labelHeight}px`
             }
-          })
-          for (let index = pagecount - ((pagecount) % Math.trunc(count)), j = 0; index < pagecount; index++, j++) {
-            const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
-            const mydivref = this.scrolling.children[index] as HTMLDivElement
-            mydivref.style.marginTop = `${marginHeight * j}px`
-            mydivref.style.height = `${labelHeight + 14}px`
-            myref.style.height = `${labelHeight}px`
-          }
-          for (let index = 0; index < Math.trunc(count); index++) {
-            const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
-            const mydivref = this.scrolling.children[index] as HTMLDivElement
-            myref.style.height = ''
-            mydivref.style.height = ''
-            mydivref.style.marginTop = ''
-          }
-          const columnsCount = Math.ceil(this.scrolling.children.length / (Math.trunc(count)))
-          for (let j = 1; j <= columnsCount; j++) {
-            if ((j * Math.trunc(count)) - 1 < pagecount) {
-              const myref = this.scrolling.children[(j * Math.trunc(count) - 1)].children[0].children[1] as HTMLDivElement
-              if (Object.values(myref.style).includes('height')) {
-                myref.style.height = ''
+            for (let index = 0; index < Math.trunc(count); index++) {
+              const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
+              const mydivref = this.scrolling.children[index] as HTMLDivElement
+              myref.style.height = ''
+              mydivref.style.height = ''
+              mydivref.style.marginTop = ''
+            }
+            const columnsCount = Math.ceil(this.scrolling.children.length / (Math.trunc(count)))
+            for (let j = 1; j <= columnsCount; j++) {
+              if ((j * Math.trunc(count)) - 1 < pagecount) {
+                const myref = this.scrolling.children[(j * Math.trunc(count) - 1)].children[0].children[1] as HTMLDivElement
+                if (Object.values(myref.style).includes('height')) {
+                  myref.style.height = ''
+                }
               }
             }
+          } else {
+            for (let index = 0; index < pagecount; index++) {
+              const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
+              const mydivref = this.scrolling.children[index] as HTMLDivElement
+              myref.style.height = ''
+              mydivref.style.height = ''
+              mydivref.style.marginTop = ''
+            }
           }
-        } else {
-          for (let index = 0; index < pagecount; index++) {
-            const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
-            const mydivref = this.scrolling.children[index] as HTMLDivElement
-            myref.style.height = ''
-            mydivref.style.height = ''
-            mydivref.style.marginTop = ''
-          }
-        }
-        let gridSum = this.rowsCount.split('px ').map(ele => { return isNaN(parseInt(ele)) ? 0 : parseInt(ele) })
-        let totalgridHeight = gridSum.reduce(function (a, b) {
-          return a + b
-        }, 0)
-        if (totalHeight > totalgridHeight && pagecount > count) {
-          const diff = totalHeight - totalgridHeight
-          const columnsCount = Math.ceil(this.scrolling.children.length / (Math.trunc(count)))
-          for (let j = 1; j <= columnsCount; j++) {
-            if ((j * Math.trunc(count)) - 1 < pagecount) {
-              const myref = this.scrolling.children[(j * Math.trunc(count)) - 1].children[0].children[1] as HTMLDivElement
-              const myDivref = this.scrolling.children[(j * Math.trunc(count)) - 1] as HTMLDivElement
-              myDivref.style.height = `${myref.clientHeight + diff}px`
-              myref.style.height = `${myref.clientHeight + diff - 13}px`
+          let gridSum = this.rowsCount.split('px ').map(ele => { return isNaN(parseInt(ele)) ? 0 : parseInt(ele) })
+          let totalgridHeight = gridSum.reduce(function (a, b) {
+            return a + b
+          }, 0)
+          if (totalHeight > totalgridHeight && pagecount > count) {
+            const diff = totalHeight - totalgridHeight
+            const columnsCount = Math.ceil(this.scrolling.children.length / (Math.trunc(count)))
+            for (let j = 1; j <= columnsCount; j++) {
+              if ((j * Math.trunc(count)) - 1 < pagecount) {
+                const myref = this.scrolling.children[(j * Math.trunc(count)) - 1].children[0].children[1] as HTMLDivElement
+                const myDivref = this.scrolling.children[(j * Math.trunc(count)) - 1] as HTMLDivElement
+                myDivref.style.height = `${myref.clientHeight + diff}px`
+                myref.style.height = `${myref.clientHeight + diff - 12}px`
+                console.log(myDivref)
+              }
             }
           }
         }
@@ -867,7 +943,9 @@ export default class FDTabStrip extends FdControlVue {
     }
   }
   mounted () {
-    this.$el.focus()
+    this.$el.focus({
+      preventScroll: true
+    })
     this.scrollButtonVerify()
     this.tempScrollWidth = this.scrolling.offsetWidth!
     this.calculateWidthHeight()
