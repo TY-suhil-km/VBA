@@ -490,6 +490,8 @@ export default class FDTabStrip extends FdControlVue {
     }
   }
   updateMultiRowforLeftAndRight () {
+    let pagecount = this.scrolling.children.length
+    const controlProp = this.properties
     if (this.properties.MultiRow) {
       this.rowsCount = ''
       if (this.properties.TabOrientation === 2 || this.properties.TabOrientation === 3) {
@@ -499,6 +501,15 @@ export default class FDTabStrip extends FdControlVue {
         let sum = 0
         let count = this.scrolling.children.length
         const a = this.properties.Value === 0 ? this.scrolling.children[1].children[0].clientHeight + 'px' : this.scrolling.children[0].children[0].clientHeight + 'px'
+        if (controlProp.TabFixedHeight === 0) {
+          for (let index = 0; index < pagecount; index++) {
+            const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
+            const mydivref = this.scrolling.children[index] as HTMLDivElement
+            myref.style.height = ''
+            mydivref.style.height = ''
+            mydivref.style.marginTop = ''
+          }
+        }
         for (let i = 0; i < this.scrolling.children.length; i++) {
           if (this.properties.Style === 1) {
             sum += (this.scrolling.children[i].children[0].clientHeight + 3)
@@ -508,43 +519,22 @@ export default class FDTabStrip extends FdControlVue {
         }
         if (totalHeight < sum) {
           if (this.properties.Style === 1) {
-            count = totalHeight / ((this.properties.Value === 0 ? this.scrolling.children[1].children[0].clientHeight : this.scrolling.children[0].children[0].clientHeight) + 6)
+            count = totalHeight / ((this.properties.Value === 0 ? this.scrolling.children[1].children[0].clientHeight : this.scrolling.children[0].children[0].clientHeight) + 3)
           } else if (this.properties.Style === 0) {
             count = totalHeight / (this.properties.Value === 0 ? this.scrolling.children[1].children[0].clientHeight : this.scrolling.children[0].children[0].clientHeight)
           }
         }
         if (count < this.scrolling.children.length) {
           for (let j = 0; j < Math.trunc(count); j++) {
-            if (this.properties.Value! >= Math.trunc(count)) {
-              const columnsCount = Math.ceil(this.scrolling.children.length / (Math.trunc(count)))
-              let previousColumnsCount = Math.ceil((this.properties.Value! as number) / (Math.trunc(count))) - 1
-              for (let index = 1; index <= columnsCount; index++) {
-                if ((this.properties.Value as number + 1) === ((Math.trunc(count) * index) + 1)) {
-                  previousColumnsCount = previousColumnsCount + 1
-                }
-              }
-              if (j === (this.properties.Value! as number - (Math.trunc(count) * previousColumnsCount))) {
-                if (this.properties.Style as number === 1) {
-                  this.rowsCount = this.rowsCount + (parseInt(a) + 13 + 'px') + ' '
-                } else if (this.properties.Style as number === 0) {
-                  this.rowsCount = this.rowsCount + (parseInt(a) + 4 + 'px') + ' '
-                }
-              } else {
-                if (this.properties.Style as number === 1) {
-                  this.rowsCount = this.rowsCount + (parseInt(a) + 6 + 'px') + ' '
-                } else if (this.properties.Style as number === 0) {
-                  this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
-                }
-              }
-            } else if (j === this.properties.Value) {
+            if (j === this.properties.Value) {
               if (this.properties.Style as number === 1) {
-                this.rowsCount = this.rowsCount + (parseInt(a) + 13 + 'px') + ' '
+                this.rowsCount = this.rowsCount + (parseInt(a) + 5 + 'px') + ' '
               } else if (this.properties.Style as number === 0) {
                 this.rowsCount = this.rowsCount + (parseInt(a) + 4 + 'px') + ' '
               }
             } else {
               if (this.properties.Style as number === 1) {
-                this.rowsCount = this.rowsCount + (parseInt(a) + 6 + 'px') + ' '
+                this.rowsCount = this.rowsCount + (parseInt(a) + 3 + 'px') + ' '
               } else if (this.properties.Style as number === 0) {
                 this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
               }
@@ -554,19 +544,84 @@ export default class FDTabStrip extends FdControlVue {
           for (let j = 0; j < Math.trunc(count); j++) {
             if (j === k) {
               if (this.properties.Style as number === 1) {
-                this.rowsCount = this.rowsCount + (parseInt(a) + 16 + 'px') + ' '
+                this.rowsCount = this.rowsCount + (parseInt(a) + 7 + 'px') + ' '
               } else if (this.properties.Style as number === 0) {
                 this.rowsCount = this.rowsCount + (parseInt(a) + 4 + 'px') + ' '
               }
             } else {
               if (this.properties.Style as number === 1) {
-                this.rowsCount = this.rowsCount + (parseInt(a) + 6 + 'px') + ' '
+                this.rowsCount = this.rowsCount + (parseInt(a) + 3 + 'px') + ' '
               } else if (this.properties.Style as number === 0) {
                 this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
               }
             }
           }
         }
+        const moveHeight = controlProp.Height
+        if (((pagecount) % Math.trunc(count)) !== 0 && controlProp.TabFixedHeight === 0) {
+          const labelHeight = (Math.ceil(moveHeight! / ((pagecount) % Math.trunc(count))) - 16) - 0.5
+          let marginHeight = labelHeight + 15 - parseInt(controlProp.Value !== 0 ? this.rowsCount.substring(0, 2) : this.rowsCount.substring(5, 7))
+          let a = this.rowsCount.split('px ').map((ele) => {
+            if (!isNaN(parseInt(ele))) {
+              return parseInt(ele)
+            }
+          })
+          for (let index = pagecount - ((pagecount) % Math.trunc(count)), j = 0; index < pagecount; index++, j++) {
+            const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
+            const mydivref = this.scrolling.children[index] as HTMLDivElement
+            mydivref.style.marginTop = `${marginHeight * j}px`
+            mydivref.style.height = `${labelHeight + 14}px`
+            myref.style.height = `${labelHeight}px`
+          }
+          for (let index = 0; index < Math.trunc(count); index++) {
+            const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
+            const mydivref = this.scrolling.children[index] as HTMLDivElement
+            myref.style.height = ''
+            mydivref.style.height = ''
+            mydivref.style.marginTop = ''
+          }
+          const columnsCount = Math.ceil(this.scrolling.children.length / (Math.trunc(count)))
+          for (let j = 1; j <= columnsCount; j++) {
+            if ((j * Math.trunc(count)) - 1 < pagecount) {
+              const myref = this.scrolling.children[(j * Math.trunc(count) - 1)].children[0].children[1] as HTMLDivElement
+              if (Object.values(myref.style).includes('height')) {
+                myref.style.height = ''
+              }
+            }
+          }
+        } else {
+          for (let index = 0; index < pagecount; index++) {
+            const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
+            const mydivref = this.scrolling.children[index] as HTMLDivElement
+            myref.style.height = ''
+            mydivref.style.height = ''
+            mydivref.style.marginTop = ''
+          }
+        }
+        let gridSum = this.rowsCount.split('px ').map(ele => { return isNaN(parseInt(ele)) ? 0 : parseInt(ele) })
+        let totalgridHeight = gridSum.reduce(function (a, b) {
+          return a + b
+        }, 0)
+        if (totalHeight > totalgridHeight && pagecount > count) {
+          const diff = totalHeight - totalgridHeight
+          const columnsCount = Math.ceil(this.scrolling.children.length / (Math.trunc(count)))
+          for (let j = 1; j <= columnsCount; j++) {
+            if ((j * Math.trunc(count)) - 1 < pagecount) {
+              const myref = this.scrolling.children[(j * Math.trunc(count)) - 1].children[0].children[1] as HTMLDivElement
+              const myDivref = this.scrolling.children[(j * Math.trunc(count)) - 1] as HTMLDivElement
+              myDivref.style.height = `${myref.clientHeight + diff}px`
+              myref.style.height = `${myref.clientHeight + diff - 13}px`
+            }
+          }
+        }
+      }
+    } else if (controlProp.TabFixedHeight === 0) {
+      for (let index = 0; index < pagecount; index++) {
+        const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
+        const mydivref = this.scrolling.children[index] as HTMLDivElement
+        myref.style.height = ''
+        mydivref.style.height = ''
+        mydivref.style.marginTop = ''
       }
     }
   }
