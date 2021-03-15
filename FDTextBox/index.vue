@@ -9,13 +9,13 @@
     @mousedown="controlEditMode"
     @keydown.enter.self="setContentEditable($event, true)"
     @mouseover="updateMouseCursor"
+    @focus="closeTextMenu"
   >
     <div
       data-gramm="false"
       :style="divCssStyleProperty"
       @dblclick="dblclick($event)"
       :readonly="properties.Locked"
-      @blur="handleBlur($event, textareaRef, hideSelectionDiv)"
       class="text-box-design"
     >
       <span
@@ -32,10 +32,12 @@
         @dragstart="dragBehavior"
         @keyup="properties.PasswordChar !== '' ? handleDelete($event) : null"
         @keydown.tab="tabKeyBehavior"
-        @input="properties.PasswordChar === '' ? updateValueProp($event) : handlePasswordChar($event)"
+        @input="updateValueProp($event)"
         @keydown.enter="enterKeyBehavior"
         @keydown.escape.exact="releaseEditMode"
         @contextmenu="isEditMode ? setCursorStartEndPosition($event) : parentConextMenu($event)"
+        @focus="closeTextMenu"
+        @blur="handleBlur($event)"
       ></span>
     </div>
   </div>
@@ -70,7 +72,6 @@ import FDEditableText from '@/FormDesigner/components/atoms/FDEditableText/index
      * @param text  TextBox properties Text Value
      */
     passwordFilter (value: string, password: string, text: string) {
-      // debugger
       if (password !== '' && text !== '') {
         let filteredValue: string = ''
         for (let index = 0; index < text.length; index++) {
@@ -183,11 +184,16 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     }
   }
   get divCssStyleProperty () {
+    const controlProp = this.properties
     return {
       ...this.fontCssStyleProperty,
+      whiteSpace: controlProp.WordWrap && controlProp.MultiLine ? 'break-spaces' : 'pre',
+      wordBreak: controlProp.WordWrap && controlProp.MultiLine ? 'break-word' : 'normal',
       width: 'fit-content',
       height: 'fit-content',
-      display: 'inline-block'
+      display: 'inline-block',
+      padding: '1px',
+      minWidth: '1px'
     }
   }
   /**
@@ -197,7 +203,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    *
    */
   get cssStyleProperty () {
-    console.log('div style')
     const controlProp = this.properties
     let display = ''
     if (this.isRunMode) {
@@ -289,8 +294,8 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event input
    *
    */
-  handlePasswordChar (event: InputEvent) {
-    // debugger
+  handlePasswordChar (event: InputEvent | KeyboardEvent) {
+    debugger
     const controlProp = this.properties
     const position = this.getCursorPos()
     let newData
@@ -298,6 +303,12 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     let selectionDiff =
       (controlProp.CursorStartPosition as number) !==
       (controlProp.CursorEndPosition as number)
+    if (!controlProp.MultiLine) {
+      this.editableTextBoxRef.innerText = this.editableTextBoxRef.innerText.replace(
+        /(\r\n|\n|\r)/gm,
+        ''
+      )
+    }
     if (event.target instanceof HTMLSpanElement) {
       if (selectionDiff) {
         // selection
@@ -305,7 +316,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         text.substring(0, controlProp.CursorStartPosition as number) +
         text.substring(controlProp.CursorEndPosition as number)
         if (!newData) {
-          newData = event.target.textContent
+          newData = event.target.innerText
         }
         this.updateDataModel({ propertyName: 'Text', value: newData })
         this.updateDataModel({ propertyName: 'Value', value: newData })
@@ -313,7 +324,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         // insertion
         newData = [
           text.slice(0, position.startPosition - 1),
-          event.data,
+          event instanceof InputEvent ? event.data : '\t',
           text.slice(position.startPosition - 1)
         ].join('')
         this.updateDataModel({ propertyName: 'Text', value: newData })
@@ -342,10 +353,16 @@ export default class FDTextBox extends Mixins(FdControlVue) {
           }
         }
       }
+      if (controlProp.PasswordChar && (event instanceof InputEvent ? event.data : event.key === 'Tab')) {
+        this.editableTextBoxRef.innerText = this.passwordCharFilter()
+      }
     } else {
       throw new Error(
         'Expected HTMLTextAreaElement but found different element'
       )
+    }
+    if (controlProp.PasswordChar !== '') {
+      this.setControlCaretPosition(false)
     }
   }
   /**
@@ -355,17 +372,18 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @param text new line character
    * @event keydown.enter.ctrl
    */
-  handleCtrlEnter (el: HTMLTextAreaElement, text: string) {
-    el.focus()
-    if (
-      typeof el.selectionStart === 'number' &&
-      typeof el.selectionEnd === 'number'
-    ) {
-      const val = el.value
-      const selStart = el.selectionStart
-      el.value = val.slice(0, selStart) + text + val.slice(el.selectionEnd)
-      el.selectionEnd = el.selectionStart = selStart + text.length
-    }
+  handleCtrlEnter () {
+    const { startPosition, endPosition } = this.getCursorPos()
+    const selection = window.getSelection()!
+    const range = selection.getRangeAt(0)
+    const br = document.createTextNode('\n')
+    range.deleteContents()
+    range.insertNode(br)
+    range.setStartAfter(br)
+    range.setEndAfter(br)
+    range.collapse(false)
+    selection.removeAllRanges()
+    selection.addRange(range)
   }
   /**
    * @description EnterKeyBehavior - if true when enter is pressed while editing the cursor moves to next line
@@ -377,7 +395,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   enterKeyBehavior (event: KeyboardEvent): boolean {
     if (this.properties.MultiLine) {
       if (event.ctrlKey) {
-        // this.handleCtrlEnter(this.textareaRef, '\n')
+        // this.handleCtrlEnter()
         // const eTarget = event.target as HTMLTextAreaElement
         // this.updateDataModel({ propertyName: 'Value', value: eTarget.value })
         return true
@@ -394,31 +412,33 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     return false
   }
   insertTab (event: KeyboardEvent) {
+    debugger
     if (!window.getSelection) return
+    // let range = document.createRange()
+    // var sel = document.getSelection()!
     const { startPosition, endPosition } = this.getCursorPos()
-    const value = this.properties.Value!.toString()
     if (event.target instanceof HTMLSpanElement) {
-      event.target.innerText = value.substring(0, startPosition) + '\t' + value.substring(endPosition)
-      // (event.target).selectionStart = selectionStart + 1;
-      //     (event.target).selectionEnd = (event.target).selectionStart
-      // const eTarget = event.target as HTMLTextAreaElement
-      this.updateDataModel({ propertyName: 'Value', value: event.target.innerText })
+      let val = event.target.innerText
+      const selStart = startPosition
+      var text = '\u0009'
+      event.target.innerText = val.slice(0, selStart) + text + val.slice(endPosition)
+      // console.log(event.target.textContent!.includes('\t'))
+      // console.log(startPosition + 1, endPosition + 1, val.slice(endPosition))
+      // console.log(event.target.innerText)
+      // range.setStart(this.editableTextBoxRef.childNodes[0], startPosition + 1)
+      // range.setEnd(this.editableTextBoxRef.childNodes[0], endPosition - 1)
+      // range.collapse(true)
+      // sel.removeAllRanges()
+      // sel.addRange(range)
+      const targetValue = event.target.innerText
+      // this.handleDelete(event)
+      this.isUpdatingText = true
+      this.properties.PasswordChar === ''
+        ? this.textAndValueUpdate(targetValue)
+        : this.handlePasswordChar(event)
+      // this.setControlCaretPosition(true)
     }
-    // const sel = window.getSelection()!
-    // if (!sel.rangeCount) return
-    // const range = sel.getRangeAt(0)
-    // range.collapse(true)
-    // const span = document.createElement('span')
-    // span.appendChild(document.createTextNode('\t'))
-    // span.style.whiteSpace = 'pre'
-    // range.insertNode(span)
-    // // Move the caret immediately after the inserted span
-    // range.setStartAfter(span)
-    // range.collapse(true)
-    // sel.removeAllRanges()
-    // sel.addRange(range)
   }
-
   /**
    * @description  specifies how the control responds to the TAB key
    * when  TabKeyBehavior true in textBox tab spaces are added on press of tab Key
@@ -428,13 +448,9 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event keydown.tab
    */
   tabKeyBehavior (event: KeyboardEvent) {
-    // debugger
+    console.log(this.getCursorPos().endPosition)
     if (this.properties.TabKeyBehavior) {
-      // document.execCommand('insertHTML', false, '&#009')
-      // this.insertTab(event)
-      this.enterTab(event)
-      this.editableTextBoxRef.blur()
-      this.editableTextBoxRef.focus()
+      this.insertTab(event)
       event.preventDefault()
       if (this.properties.AutoSize) {
         this.updateAutoSize()
@@ -442,24 +458,15 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     } else {
       EventBus.$emit('focusNextControlOnAutoTab')
     }
-  }
-  enterTab (event: KeyboardEvent) {
-    event.stopPropagation()
-    // debugger
+    let range = document.createRange()
+    var sel = document.getSelection()!
     const { startPosition, endPosition } = this.getCursorPos()
-    let value: any = this.properties.Value
-    const multiLine = this.properties.MultiLine
-    // this.updateDataModel({ propertyName: 'MultiLine', value: true })
-    value = value!.slice(0, startPosition) + '\t' + value!.slice(endPosition, value.length)
-    this.updateDataModel({ propertyName: 'Value', value: value })
-    this.editableTextBoxRef.innerText = this.properties.Value!.toString()
-    event.preventDefault()
-    // console.log(this.editableTextBoxRef.childNodes)
-    // console.log(startPosition, endPosition)
-    // let range = new Range()
-    // range.setStart(this.editableTextBoxRef.childNodes[0], 0)
-    // range.setEnd(this.editableTextBoxRef.childNodes[0], 2)
-    // range.collapse(true)
+    console.log(this.getCursorPos().endPosition)
+    range.setStart(this.editableTextBoxRef.childNodes[0], startPosition + 1)
+    // range.setEnd(this.editableTextBoxRef.childNodes[0], endPosition - 1)
+    range.collapse(true)
+    sel.removeAllRanges()
+    sel.addRange(range)
   }
   /**
    * @description updates the dataModel textBox object properties when user insert/delete text
@@ -471,17 +478,15 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    */
 
   updateValueProp (event: InputEvent) {
-    // debugger
     const controlProp = this.properties
     const text = this.editableTextBoxRef.innerText
     if (controlProp.MaxLength !== 0 && text.length > controlProp.MaxLength!) {
       this.editableTextBoxRef.innerText = controlProp.Value!.toString()
       event.preventDefault()
     } else {
-      this.textAndValueUpdate(text)
-      // controlProp.PasswordChar === ''
-      //   ? this.textAndValueUpdate(text)
-      //   : this.handlePasswordChar(text)
+      controlProp.PasswordChar === ''
+        ? this.textAndValueUpdate(text)
+        : this.handlePasswordChar(event)
     }
   }
 
@@ -496,14 +501,15 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     if (this.properties.AutoSize) {
       this.updateAutoSize()
     }
-    if (!controlPropData.MultiLine) {
-      // this.editableTextBoxRef.innerText = this.editableTextBoxRef.innerText.replace(
-      //   /(\r\n|\n|\r)/gm,
-      //   ''
-      // )
-      // this.editableTextBoxRef.focus()
-      // this.setControlCaretPosition()
-    }
+    // if (!controlPropData.MultiLine) {
+    //   console.log('jk')
+    //   const newLineLength = updateValue.split('\n')
+    //   console.log(newLineLength, newLineLength.length)
+    //   if (newLineLength.length > 0) {
+    //     this.editableTextBoxRef.innerText = newLineLength[0]
+    //   }
+    //   this.setControlCaretPosition(false)
+    // }
     this.updateDataModel({
       propertyName: 'Value',
       value: updateValue
@@ -559,7 +565,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         if (isFocused) {
           range.setStart(
             el.childNodes[0],
-            parseInt(this.properties.CursorEndPosition!.toString())
+            this.getCursorPos().endPosition
           )
         } else {
           range.setStart(
@@ -596,23 +602,27 @@ export default class FDTextBox extends Mixins(FdControlVue) {
 
   @Watch('properties.MultiLine')
   multiLineValidate () {
+    // debugger
     if (this.editableTextBoxRef) {
       this.originalText = this.editableTextBoxRef.innerText
       this.trimmedText = this.originalText.replace(/(\r\n|\n|\r)/gm, '¶')
-
       if (this.properties.MultiLine) {
         this.trimmedText = this.originalText.replace(/¶/g, '\n')
         this.editableTextBoxRef.innerText = this.trimmedText
-        this.updateDataModel({
-          propertyName: 'Value',
-          value: this.trimmedText
-        })
+        if (this.properties.PasswordChar === '') {
+          this.updateDataModel({
+            propertyName: 'Value',
+            value: this.trimmedText
+          })
+        }
       } else {
         this.editableTextBoxRef.innerText = this.trimmedText
-        this.updateDataModel({
-          propertyName: 'Value',
-          value: this.trimmedText
-        })
+        if (this.properties.PasswordChar === '') {
+          this.updateDataModel({
+            propertyName: 'Value',
+            value: this.trimmedText
+          })
+        }
       }
     }
     if (this.properties.AutoSize) {
@@ -630,7 +640,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @override
    */
   updateAutoSize () {
-    // debugger
     if (this.properties.AutoSize === true) {
       this.$nextTick(() => {
         const textareaRef: HTMLDivElement = this.textareaRef
@@ -669,7 +678,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       this.updateDataModel({ propertyName: 'Text', value: controlSourceValue })
     }
     EventBus.$on('updateText', (updateValue: string) => {
-      console.log(updateValue)
       this.editableTextBoxRef.innerText = updateValue
       this.setControlCaretPosition(true)
     })
@@ -708,9 +716,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event keydown
    */
   handleDelete (event: KeyboardEvent | MouseEvent) {
-    console.log('event', event)
-    debugger
-    console.log(event instanceof KeyboardEvent)
+    // debugger
     if (event.target instanceof HTMLSpanElement) {
       let eventType = ''
       if (event instanceof KeyboardEvent && (event.keyCode === 8 || event.keyCode === 46 || (event.ctrlKey && event.code === 'KeyX') || (event.ctrlKey && event.code === 'KeyV') || (event.ctrlKey && event.code === 'KeyA'))) {
@@ -718,10 +724,8 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       } else if (event instanceof MouseEvent && event.which === 3) {
         eventType = 'mouse'
       }
-      console.log(eventType)
       if (eventType) {
         const { startPosition, endPosition } = this.getCursorPos()
-        console.log('se', startPosition, endPosition)
         this.updateDataModel({
           propertyName: 'CursorStartPosition',
           value: startPosition!
@@ -747,13 +751,12 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    *
    */
   handleBlur (
-    event: TextEvent,
-    textareaRef: HTMLTextAreaElement,
-    hideSelectionDiv: HTMLDivElement
+    event: TextEvent
   ) {
     // debugger
-    // this.getSelectionStart = this.textareaRef.selectionStart
-    // this.getSelectionEnd = this.textareaRef.selectionEnd
+    const { startPosition, endPosition } = this.getCursorPos()
+    this.getSelectionStart = startPosition
+    this.getSelectionEnd = endPosition
     // const s = window.getSelection()!
     // if (s.rangeCount >= 1) {
     //   for (var i = 0; i < s.rangeCount; i++) {
@@ -839,13 +842,18 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     } else {
       this.isUpdatingText = false
     }
+    const propData: controlProperties = this.properties
+    if (propData.Text !== propData.Value && propData.ControlSource === '') {
+      this.updateDataModel({ propertyName: 'Text',
+        value: this.properties.Value! })
+    }
   }
   @Watch('properties.PasswordChar')
   updateInnerTextWhenPasswordCharUpdated () {
-    // debugger
     this.editableTextBoxRef.innerText = this.passwordCharFilter()
   }
   passwordCharFilter () {
+    // debugger
     const controlProp = this.properties
     if (controlProp.PasswordChar !== '' && controlProp.Value !== '') {
       let filteredValue: string = ''
@@ -867,7 +875,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     })
   }
   getCursorPos () {
-    // debugger
     let startPosition = 0
     let endPosition = 0
     const isSupported = typeof window.getSelection !== 'undefined'
@@ -885,6 +892,9 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       }
     }
     return { startPosition: startPosition, endPosition: endPosition }
+  }
+  closeTextMenu () {
+    EventBus.$emit('closeMenu')
   }
 }
 </script>
