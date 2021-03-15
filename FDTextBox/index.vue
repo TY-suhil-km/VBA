@@ -430,8 +430,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   insertTab (event: KeyboardEvent) {
     debugger
     if (!window.getSelection) return
-    // let range = document.createRange()
-    // var sel = document.getSelection()!
     const { startPosition, endPosition } = this.getCursorPos()
     if (event.target instanceof HTMLSpanElement) {
       let val = event.target.innerText
@@ -439,6 +437,8 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       var text = '\u0009'
       event.target.innerText = val.slice(0, selStart) + text + val.slice(endPosition)
       // console.log(event.target.textContent!.includes('\t'))
+      // let range = document.createRange()
+      // var sel = document.getSelection()!
       // console.log(startPosition + 1, endPosition + 1, val.slice(endPosition))
       // console.log(event.target.innerText)
       // range.setStart(this.editableTextBoxRef.childNodes[0], startPosition + 1)
