@@ -299,6 +299,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     const controlProp = this.properties
     const position = this.getCursorPos()
     let newData
+    console.log(position)
     let text = this.properties.Text!
     let selectionDiff =
       (controlProp.CursorStartPosition as number) !==
@@ -361,9 +362,24 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         'Expected HTMLTextAreaElement but found different element'
       )
     }
-    if (controlProp.PasswordChar !== '') {
-      this.setControlCaretPosition(false)
-    }
+    // if (controlProp.PasswordChar !== '' && controlProp.Text !== '') {
+    //   console.log(position.endPosition)
+    //   debugger
+    //   // this.setControlCaretPosition(true)
+    //   Vue.nextTick(() => {
+    //     (this.editableTextBoxRef as HTMLSpanElement).focus()
+    //     const el = this.editableTextBoxRef
+    //     const range = document.createRange()
+    //     const sel = window.getSelection()!
+    //     range.setStart(
+    //       el.childNodes[0],
+    //       position.endPosition + 1
+    //     )
+    //     range.collapse(true)
+    //     sel.removeAllRanges()
+    //     sel.addRange(range)
+    //   })
+    // }
   }
   /**
    * @description When user enters ctrl + enter cursor moves to next line
@@ -449,6 +465,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    */
   tabKeyBehavior (event: KeyboardEvent) {
     console.log(this.getCursorPos().endPosition)
+    debugger
     if (this.properties.TabKeyBehavior) {
       this.insertTab(event)
       event.preventDefault()
@@ -462,7 +479,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     var sel = document.getSelection()!
     const { startPosition, endPosition } = this.getCursorPos()
     console.log(this.getCursorPos().endPosition)
-    range.setStart(this.editableTextBoxRef.childNodes[0], startPosition + 1)
+    range.setStart(this.editableTextBoxRef.childNodes[0], 1)
     // range.setEnd(this.editableTextBoxRef.childNodes[0], endPosition - 1)
     range.collapse(true)
     sel.removeAllRanges()
@@ -502,9 +519,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       this.updateAutoSize()
     }
     // if (!controlPropData.MultiLine) {
-    //   console.log('jk')
     //   const newLineLength = updateValue.split('\n')
-    //   console.log(newLineLength, newLineLength.length)
     //   if (newLineLength.length > 0) {
     //     this.editableTextBoxRef.innerText = newLineLength[0]
     //   }
@@ -556,6 +571,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     e.preventDefault()
   }
   setControlCaretPosition (isFocused: boolean) {
+    console.log(this.getCursorPos())
     Vue.nextTick(() => {
       (this.editableTextBoxRef as HTMLSpanElement).focus()
       const el = this.editableTextBoxRef
