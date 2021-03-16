@@ -22,8 +22,8 @@
       :readonly="properties.Locked"
       @keydown.escape.exact="releaseEditMode"
       v-cursorDirective="{
-        start: textareaRef ? textareaRef.selectionStart : data.properties.CursorStartPosition,
-        end: textareaRef ? textareaRef.selectionEnd : data.properties.CursorEndPosition,
+        start: textareaRef ? start : data.properties.CursorStartPosition,
+        end: textareaRef ? end : data.properties.CursorEndPosition,
         pwdCharType: properties.PasswordChar,
       }"
       @keydown.tab.exact="tabKeyBehavior"
@@ -40,7 +40,7 @@
       class="text-box-design"
       :value="
         properties.Value
-          | passwordFilter(properties.PasswordChar, properties.Value, this.textareaRef)
+          | passwordFilter(properties.PasswordChar, properties.Value)
       "
       @dragstart="dragBehavior"
     />
@@ -55,7 +55,7 @@
     >
       {{
         properties.Value
-          | passwordFilter(properties.PasswordChar, properties.Value, this.textareaRef)
+          | passwordFilter(properties.PasswordChar, properties.Value)
       }}
     </div>
     <label ref="autoSizeTextarea"></label>
@@ -87,19 +87,12 @@ import { controlProperties } from '@/FormDesigner/controls-properties'
      * @param password passwordChar value to filter the text
      * @param text  TextBox properties Text Value
      */
-    passwordFilter (value: string, password: string, text: string, textareaRef: HTMLTextAreaElement) {
+    passwordFilter (value: string, password: string, text: string) {
       if (password !== '' && text !== '') {
         let filteredValue: string = ''
         for (let index = 0; index < text.length; index++) {
           filteredValue = filteredValue + password[0]
         }
-        // if (textareaRef !== undefined) {
-        //   let selectStart = textareaRef.selectionStart
-        //   let selectEnd = textareaRef.selectionEnd
-        //   console.log(selectStart, selectEnd)
-        //   debugger
-        //   // textareaRef.selectionEnd = selectEnd + 1
-        // }
         return filteredValue
       } else {
         return value
@@ -136,6 +129,8 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   originalText: string = ''
   trimmedText: string = ''
   fitToSizeWhenMultiLine: boolean = false
+  start: number = 0
+  end: number = 0
   dblclick (e: Event) {
     let newSelectionStart = 0
     const eTarget = e.target as HTMLTextAreaElement
@@ -274,6 +269,9 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    *
    */
   handlePasswordChar (event: Event) {
+    this.start = this.textareaRef.selectionStart
+    this.end = this.textareaRef.selectionEnd
+    console.log(this.start, this.end)
     const controlPropData = this.properties
     const startPos = this.textareaRef.selectionStart
     if (event.target instanceof HTMLTextAreaElement) {
@@ -411,60 +409,9 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @param event its of type MouseEvent
    * @event keydown.tab
    */
-  // tabKeyBehavior (event: KeyboardEvent): boolean {
-  //   if (this.properties.TabKeyBehavior) {
-  //     const TABKEY = 9
-  //     if (event.target instanceof HTMLTextAreaElement) {
-  //       event.stopPropagation()
-  //       const eventTaget = event.target
-  //       let selectionStart = eventTaget.selectionStart
-  //       let selectionEnd = eventTaget.selectionEnd
-  //       console.log(selectionStart, selectionEnd)
-  //       const value = this.properties.Value!.toString()
-  //       if (event.keyCode === TABKEY) {
-  //         (event.target).value =
-  //         value.substring(0, selectionStart) +
-  //         '\t' +
-  //         value.substring(selectionEnd)
-  //         event.preventDefault()
-  //       }
-  //       (event.target).selectionStart =
-  //       // if (event.keyCode === TABKEY) {
-  //       //   this.updateDataModel({ propertyName: 'Value', value: value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd) })
-  //       //   // (event.target).value = value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd)
-  //       //   event.preventDefault()
-  //       // }
-  //       // debugger
-  //       // this.textareaRef.selectionStart = this.properties.Value!.toString().length
-  //       console.log(value)
-  //       debugger
-  //       // this.textareaRef.selectionStart = selectionStart + 1
-  //       // let range = document.createRange()
-  //       // var sel = document.getSelection()!
-  //       // range.setStart(this.hideSelectionDiv.childNodes[0], selectionStart + 1)
-  //       // range.setEnd(this.hideSelectionDiv.childNodes[0], selectionEnd + 1)
-  //       // range.collapse(true)
-  //       // sel.removeAllRanges()
-  //       // sel.addRange(range)
-  //       // selectionEnd = this.textareaRef.selectionEnd
-  //       // selectionStart = this.textareaRef.selectionStart
-  //       // const eTarget = event.target as HTMLTextAreaElement
-  //       // console.log(selectionStart, selectionEnd)
-  //       // console.log((this.properties.Value!.toString()).slice(0, selectionStart - 1))
-  //       // const updatedValue = (this.properties.Value!.toString()).slice(0, selectionStart - 1) + '\t' + (this.properties.Value!.toString()).slice(selectionEnd - 1)
-  //       // this.updateDataModel({ propertyName: 'Value', value: updatedValue })
-  //       // if (this.properties.PasswordChar !== '') {
-  //       //   this.handlePasswordChar(event)
-  //       // }
-  //       return false
-  //     } else {
-  //       throw new Error('Expected HTMLTextAreaElement but found different element')
-  //     }
-  //   } else {
-  //     return true
-  //   }
-  // }
   tabKeyBehavior (event: KeyboardEvent): boolean {
+    this.start = this.textareaRef.selectionStart + 1
+    this.end = this.textareaRef.selectionEnd + 1
     if (this.properties.TabKeyBehavior) {
       const TABKEY = 9
       if (event.target instanceof HTMLTextAreaElement) {
@@ -472,7 +419,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         const eventTaget = event.target
         const selectionStart = eventTaget.selectionStart
         const selectionEnd = eventTaget.selectionEnd
-        const value = this.properties.Value
+        const value = this.properties.Value!.toString()
         // if (event.keyCode === TABKEY) {
         //   (event.target).value =
         //   value.substring(0, selectionStart) +
@@ -482,7 +429,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         // }
         if (event.keyCode === TABKEY) {
           this.updateDataModel({ propertyName: 'Value', value: value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd) })
-          // (event.target).value = value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd)
           event.preventDefault()
         }
         (event.target).selectionStart = selectionStart + 1;
@@ -584,9 +530,9 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     if (this.textareaRef) {
       this.originalText = this.properties.Value!.toString()
       this.trimmedText = this.originalText.replace(/(\r\n|\n|\r)/gm, '¶')
-      // if (this.properties.MultiLine) {
-      //   console.log('ml is true')
-      // }
+      if (this.properties.MultiLine === false && this.properties.PasswordChar !== '') {
+        this.updateDataModel({ propertyName: 'Text', value: '' })
+      }
       if (this.properties.MultiLine) {
         this.trimmedText = this.originalText.replace(/¶/g, '\n')
         this.updateDataModel({ propertyName: 'Value', value: this.trimmedText })
