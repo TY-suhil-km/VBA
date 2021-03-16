@@ -1,45 +1,64 @@
 <template>
-  <div
-    class="resp-textbox"
-    v-on="eventStoppers()"
-    :title="properties.ControlTipText"
-    :tabindex="properties.TabIndex"
-    :style="cssStyleProperty"
-    @click="textBoxClick"
-    @mousedown="controlEditMode"
-    @keydown.enter.self="setContentEditable($event, true)"
-    @mouseover="updateMouseCursor"
-    @focus="closeTextMenu"
+  <div class="resp-textbox"
+  v-on="eventStoppers()"
+  @click="textBoxClick"
+  @mousedown="controlEditMode"
+  :tabindex="properties.TabIndex"
+  @keydown.enter.self="setContentEditable($event, true)"
+  @contextmenu="isEditMode ? openTextContextMenu($event): parentConextMenu($event)"
+  @mouseover="updateMouseCursor"
   >
-    <div
+    <textarea
       data-gramm="false"
-      :style="divCssStyleProperty"
+      ref="textareaRef"
+      :style="cssStyleProperty"
+      @mouseover="updateMouseCursor"
+      :tabindex="properties.TabIndex"
+      :maxlength="properties.MaxLength !==0 ? properties.MaxLength : ''"
+      :disabled="getDisableValue"
+      :title="properties.ControlTipText"
       @dblclick="dblclick($event)"
+      @focus="closeTextMenu"
       :readonly="properties.Locked"
-      class="text-box-design"
-    >
-      <span
-        id="initialRef"
-        ref="editableTextBoxRef"
-        :tabindex="properties.TabIndex"
-        :style="divCssStyleProperty"
-        :contenteditable="!getDisableValue"
-        v-cursorDirective="{
-        start: data.properties.CursorStartPosition,
-        end: data.properties.CursorEndPosition,
+      @keydown.escape.exact="releaseEditMode"
+      v-cursorDirective="{
+        start: textareaRef ? textareaRef.selectionStart : data.properties.CursorStartPosition,
+        end: textareaRef ? textareaRef.selectionEnd : data.properties.CursorEndPosition,
         pwdCharType: properties.PasswordChar,
       }"
-        @dragstart="dragBehavior"
-        @keyup="properties.PasswordChar !== '' ? handleDelete($event) : null"
-        @keydown.tab="tabKeyBehavior"
-        @input="updateValueProp($event)"
-        @keydown.enter="enterKeyBehavior"
-        @keydown.escape.exact="releaseEditMode"
-        @contextmenu="isEditMode ? setCursorStartEndPosition($event) : parentConextMenu($event)"
-        @focus="closeTextMenu"
-        @blur="handleBlur($event)"
-      ></span>
+      @keydown.tab.exact="tabKeyBehavior"
+      @keydown.enter.exact="enterKeyBehavior"
+      @input="
+        properties.PasswordChar === ''
+          ? textAndValueUpdate($event)
+          : handlePasswordChar($event)
+      "
+      @keydown.exact="properties.PasswordChar !== '' ? handleDelete($event) : null"
+      @keydown.ctrl="handleCtrl"
+      @blur="handleBlur($event, textareaRef, hideSelectionDiv)"
+      @click="handleClick(hideSelectionDiv)"
+      class="text-box-design"
+      :value="
+        properties.Value
+          | passwordFilter(properties.PasswordChar, properties.Value, this.textareaRef)
+      "
+      @dragstart="dragBehavior"
+    />
+    <div
+      ref="hideSelectionDiv"
+      @click="divHide($event, textareaRef)"
+      :style="divcssStyleProperty"
+      @mouseover="updateMouseCursor"
+      :title="properties.ControlTipText"
+      @keydown="handleCtrl"
+      class="text-box-design"
+    >
+      {{
+        properties.Value
+          | passwordFilter(properties.PasswordChar, properties.Value, this.textareaRef)
+      }}
     </div>
+    <label ref="autoSizeTextarea"></label>
   </div>
 </template>
 
@@ -56,13 +75,10 @@ import {
 import FdControlVue from '@/api/abstract/FormDesigner/FdControlVue'
 import { DirectiveBinding } from 'vue/types/options'
 import { EventBus } from '@/FormDesigner/event-bus'
-import FDEditableText from '@/FormDesigner/components/atoms/FDEditableText/index.vue'
+import { controlProperties } from '@/FormDesigner/controls-properties'
 
 @Component({
   name: 'FDTextBox',
-  components: {
-    FDEditableText
-  },
   filters: {
     /**
      * @description filter to show passwordChar instead of original text
@@ -71,12 +87,19 @@ import FDEditableText from '@/FormDesigner/components/atoms/FDEditableText/index
      * @param password passwordChar value to filter the text
      * @param text  TextBox properties Text Value
      */
-    passwordFilter (value: string, password: string, text: string) {
+    passwordFilter (value: string, password: string, text: string, textareaRef: HTMLTextAreaElement) {
       if (password !== '' && text !== '') {
         let filteredValue: string = ''
         for (let index = 0; index < text.length; index++) {
           filteredValue = filteredValue + password[0]
         }
+        // if (textareaRef !== undefined) {
+        //   let selectStart = textareaRef.selectionStart
+        //   let selectEnd = textareaRef.selectionEnd
+        //   console.log(selectStart, selectEnd)
+        //   debugger
+        //   // textareaRef.selectionEnd = selectEnd + 1
+        // }
         return filteredValue
       } else {
         return value
@@ -107,24 +130,22 @@ import FDEditableText from '@/FormDesigner/components/atoms/FDEditableText/index
 export default class FDTextBox extends Mixins(FdControlVue) {
   @Ref('hideSelectionDiv') readonly hideSelectionDiv!: HTMLDivElement;
   @Ref('autoSizeTextarea') readonly autoSizeTextarea!: HTMLLabelElement;
-  @Ref('textareaRef') readonly textareaRef!: HTMLDivElement;
-  @Ref('editableTextBoxRef') editableTextBoxRef!: HTMLSpanElement;
+  @Ref('textareaRef') textareaRef: HTMLTextAreaElement;
 
-  $el: HTMLDivElement;
-  originalText: string = '';
-  trimmedText: string = '';
-  prevSelection: number = 0;
-  isUpdatingText: boolean = false;
+  $el: HTMLDivElement
+  originalText: string = ''
+  trimmedText: string = ''
+  fitToSizeWhenMultiLine: boolean = false
   dblclick (e: Event) {
-    //   let newSelectionStart = 0
-    //   const eTarget = e.target as HTMLDivElement
-    //   for (let i = eTarget.selectionStart; i > 0; i--) {
-    //     if (eTarget.value[i - 1] === ' ' || eTarget.value[i - 1] === undefined) {
-    //       newSelectionStart = i
-    //       break
-    //     }
-    //   }
-    //   this.textareaRef.setSelectionRange(newSelectionStart, eTarget.selectionEnd)
+    let newSelectionStart = 0
+    const eTarget = e.target as HTMLTextAreaElement
+    for (let i = eTarget.selectionStart; i > 0; i--) {
+      if (eTarget.value[i - 1] === ' ' || eTarget.value[i - 1] === undefined) {
+        newSelectionStart = i
+        break
+      }
+    }
+    this.textareaRef.setSelectionRange(newSelectionStart, eTarget.selectionEnd)
   }
   get getDisableValue () {
     if (this.isRunMode) {
@@ -149,7 +170,13 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   //     this.hideSelectionDiv.style.display = 'block'
   //   }
   // }
-  get fontCssStyleProperty () {
+  /**
+   * @description style object is passed to :style attribute in Textarea tag
+   * dynamically changing the styles of the component based on properties
+   * @function cssStyleProperty
+   *
+   */
+  get cssStyleProperty () {
     const controlProp = this.properties
     const font: font = controlProp.Font
       ? controlProp.Font
@@ -162,63 +189,13 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         FontStrikethrough: true,
         FontStyle: 'Arial'
       }
-    return {
-      fontFamily: font.FontStyle! !== '' ? this.setFontStyle : font.FontName!,
-      fontSize: `${font.FontSize}px`,
-      fontStyle: font.FontItalic || this.isItalic ? 'italic' : '',
-      textDecoration:
-        font.FontStrikethrough === true && font.FontUnderline === true
-          ? 'underline line-through'
-          : font.FontUnderline
-            ? 'underline'
-            : font.FontStrikethrough
-              ? 'line-through'
-              : '',
-      textDecorationSkipInk: 'none',
-      fontWeight: font.FontBold
-        ? 'bold'
-        : font.FontStyle !== ''
-          ? this.tempWeight
-          : '',
-      fontStretch: font.FontStyle !== '' ? this.tempStretch : ''
-    }
-  }
-  get divCssStyleProperty () {
-    const controlProp = this.properties
-    return {
-      ...this.fontCssStyleProperty,
-      whiteSpace: controlProp.WordWrap && controlProp.MultiLine ? 'break-spaces' : 'pre',
-      wordBreak: controlProp.WordWrap && controlProp.MultiLine ? 'break-word' : 'normal',
-      width: 'fit-content',
-      height: 'fit-content',
-      display: 'inline-block',
-      padding: '1px',
-      minWidth: '1px'
-    }
-  }
-  /**
-   * @description style object is passed to :style attribute in Textarea tag
-   * dynamically changing the styles of the component based on properties
-   * @function cssStyleProperty
-   *
-   */
-  get cssStyleProperty () {
-    const controlProp = this.properties
     let display = ''
     if (this.isRunMode) {
-      display = controlProp.Visible
-        ? controlProp.Width === 0 || controlProp.Height === 0
-          ? 'none'
-          : 'inline-block'
-        : 'none'
+      display = controlProp.Visible ? controlProp.Width === 0 || controlProp.Height === 0 ? 'none' : 'block' : 'none'
     } else {
-      display =
-        controlProp.Width === 0 || controlProp.Height === 0
-          ? 'none'
-          : 'inline-block'
+      display = controlProp.Width === 0 || controlProp.Height === 0 ? 'none' : 'block'
     }
     return {
-      ...this.fontCssStyleProperty,
       left: `${controlProp.Left}px`,
       width: `${controlProp.Width}px`,
       height: `${controlProp.Height}px`,
@@ -230,62 +207,64 @@ export default class FDTextBox extends Mixins(FdControlVue) {
           : controlProp.TextAlign === 1
             ? 'center'
             : 'right',
-      backgroundColor: controlProp.BackStyle
-        ? controlProp.BackColor
-        : 'transparent',
-      borderLeft:
-        controlProp.BorderStyle === 1
-          ? '1px solid ' + controlProp.BorderColor
-          : controlProp.SpecialEffect === 2
-            ? '2px solid gray'
-            : controlProp.SpecialEffect === 3
-              ? '1.5px solid gray'
-              : controlProp.SpecialEffect === 4
-                ? '0.5px solid gray'
-                : '',
-      borderRight:
-        controlProp.BorderStyle === 1
-          ? '1px solid ' + controlProp.BorderColor
-          : controlProp.SpecialEffect === 1
-            ? '2px solid gray'
-            : controlProp.SpecialEffect === 4
-              ? '1.5px solid gray'
-              : controlProp.SpecialEffect === 3
-                ? '0.5px solid gray'
-                : '',
-      borderTop:
-        controlProp.BorderStyle === 1
-          ? '1px solid ' + controlProp.BorderColor
-          : controlProp.SpecialEffect === 2
-            ? '2px solid gray'
-            : controlProp.SpecialEffect === 3
-              ? '1.5px solid gray'
-              : controlProp.SpecialEffect === 4
-                ? '0.5px solid gray'
-                : '',
-      borderBottom:
-        controlProp.BorderStyle === 1
-          ? '1px solid ' + controlProp.BorderColor
-          : controlProp.SpecialEffect === 1
-            ? '2px solid gray'
-            : controlProp.SpecialEffect === 4
-              ? '1.5px solid gray'
-              : controlProp.SpecialEffect === 3
-                ? '0.5px solid gray'
-                : '',
-      whiteSpace:
-        controlProp.WordWrap && controlProp.MultiLine ? 'break-spaces' : 'pre',
+      backgroundColor: controlProp.BackStyle ? controlProp.BackColor : 'transparent',
+      borderLeft: controlProp.BorderStyle === 1 ? '1px solid ' + controlProp.BorderColor : controlProp.SpecialEffect === 2 ? '2px solid gray' : controlProp.SpecialEffect === 3 ? '1.5px solid gray' : controlProp.SpecialEffect === 4 ? '0.5px solid gray' : '',
+      borderRight: controlProp.BorderStyle === 1 ? '1px solid ' + controlProp.BorderColor : controlProp.SpecialEffect === 1 ? '2px solid gray' : controlProp.SpecialEffect === 4 ? '1.5px solid gray' : controlProp.SpecialEffect === 3 ? '0.5px solid gray' : '',
+      borderTop: controlProp.BorderStyle === 1 ? '1px solid ' + controlProp.BorderColor : controlProp.SpecialEffect === 2 ? '2px solid gray' : controlProp.SpecialEffect === 3 ? '1.5px solid gray' : controlProp.SpecialEffect === 4 ? '0.5px solid gray' : '',
+      borderBottom: controlProp.BorderStyle === 1 ? '1px solid ' + controlProp.BorderColor : controlProp.SpecialEffect === 1 ? '2px solid gray' : controlProp.SpecialEffect === 4 ? '1.5px solid gray' : controlProp.SpecialEffect === 3 ? '0.5px solid gray' : '',
+      whiteSpace: this.setWhiteSpace(),
       wordBreak:
         controlProp.WordWrap && controlProp.MultiLine ? 'break-word' : 'normal',
       color:
         controlProp.Enabled === true ? controlProp.ForeColor : this.getEnabled,
       cursor: this.controlCursor,
+      fontFamily: (font.FontStyle! !== '') ? this.setFontStyle : font.FontName!,
+      fontSize: `${font.FontSize}px`,
+      fontStyle: font.FontItalic || this.isItalic ? 'italic' : '',
+      textDecoration:
+        font.FontStrikethrough === true && font.FontUnderline === true
+          ? 'underline line-through'
+          : font.FontUnderline
+            ? 'underline'
+            : font.FontStrikethrough
+              ? 'line-through'
+              : '',
+      textDecorationSkipInk: 'none',
+      fontWeight: font.FontBold ? 'bold' : (font.FontStyle !== '') ? this.tempWeight : '',
+      fontStretch: (font.FontStyle !== '') ? this.tempStretch : '',
       display: display,
       overflowX: this.properties.AutoSize ? 'hidden' : this.getScrollBarX,
       overflowY: this.properties.AutoSize ? 'hidden' : this.getScrollBarY
     }
   }
 
+  setWhiteSpace () {
+    const controlProp = this.properties
+    if (this.isEditMode) {
+      if (controlProp.MultiLine) {
+        if (controlProp.WordWrap) {
+          return 'break-spaces'
+        } else {
+          return 'nowrap'
+        }
+      } else {
+        return 'nowrap'
+      }
+    } else {
+      if (controlProp.MultiLine) {
+        if (controlProp.WordWrap) {
+          return 'break-spaces'
+        } else {
+          return 'pre'
+        }
+      } else {
+        return 'pre'
+      }
+    }
+  }
+  @Watch('properties.PasswordChar')
+  handlePasswordCharFalse () {
+  }
   /**
    * @description updates the dataModel textBox object properties when user insert/delete text
    * inside textBox when passwordChar is set, updates text and values properties of textBox with entered character
@@ -294,92 +273,94 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event input
    *
    */
-  handlePasswordChar (event: InputEvent | KeyboardEvent) {
-    debugger
-    const controlProp = this.properties
-    const position = this.getCursorPos()
+  handlePasswordChar (event: Event) {
+    const controlPropData = this.properties
+    const startPos = this.textareaRef.selectionStart
+    if (event.target instanceof HTMLTextAreaElement) {
+      if (!controlPropData.MultiLine) {
+        event.target.value = event.target.value.replace(/(\r\n|\n|\r)/gm, '')
+        for (let i = 0; i < event.target.value.length; i++) {
+          event.target.value = event.target.value.replace(event.target.value[i], this.properties.PasswordChar!)
+        }
+      }
+    }
+    // console.log(this.textareaRef.selectionStart, startPos)
+    // let range = document.createRange()
+    // var sel = document.getSelection()!
+    // range.setStart(this.hideSelectionDiv.childNodes[0], startPos + 1)
+    // // range.setEnd(this.textareaRef.childNodes[0], endPosition - 1)
+    // range.collapse(true)
+    // sel.removeAllRanges()
+    // sel.addRange(range)
+    // console.log(this.hideSelectionDiv.childNodes[0])
     let newData
-    console.log(position)
+    // console.log('insertion', this.textareaRef.selectionStart - 1)
     let text = this.properties.Text!
     let selectionDiff =
-      (controlProp.CursorStartPosition as number) !==
-      (controlProp.CursorEndPosition as number)
-    if (!controlProp.MultiLine) {
-      this.editableTextBoxRef.innerText = this.editableTextBoxRef.innerText.replace(
-        /(\r\n|\n|\r)/gm,
-        ''
-      )
-    }
-    if (event.target instanceof HTMLSpanElement) {
+      (this.data.properties!.CursorStartPosition as number) !==
+      (this.data.properties!.CursorEndPosition as number)
+    if (event.target instanceof HTMLTextAreaElement) {
       if (selectionDiff) {
         // selection
         newData =
-        text.substring(0, controlProp.CursorStartPosition as number) +
-        text.substring(controlProp.CursorEndPosition as number)
-        if (!newData) {
-          newData = event.target.innerText
-        }
+        text.substring(0, this.data.properties!.CursorStartPosition as number) +
+        text.substring(this.data.properties!.CursorEndPosition as number)
         this.updateDataModel({ propertyName: 'Text', value: newData })
         this.updateDataModel({ propertyName: 'Value', value: newData })
-      } else if (text.length < event.target.innerText.length) {
+      } else if (text.length < event.target.value.length) {
         // insertion
         newData = [
-          text.slice(0, position.startPosition - 1),
-          event instanceof InputEvent ? event.data : '\t',
-          text.slice(position.startPosition - 1)
+          text.slice(0, startPos - 1),
+          event.data,
+          text.slice(startPos - 1)
         ].join('')
         this.updateDataModel({ propertyName: 'Text', value: newData })
         this.updateDataModel({ propertyName: 'Value', value: newData })
-      } else if (text.length > event.target.innerText.length) {
+      } else if (text.length > event.target.value.length) {
         // deletion
         newData = [
-          text.slice(0, position.startPosition),
-          text.slice(position.startPosition + 1)
+          text.slice(0, startPos),
+          text.slice(startPos + 1)
         ].join('')
         this.updateDataModel({ propertyName: 'Text', value: newData })
         this.updateDataModel({ propertyName: 'Value', value: newData })
       }
       this.updateDataModel({
         propertyName: 'CursorStartPosition',
-        value: position.startPosition
+        value: event.target.selectionStart
       })
       this.updateDataModel({
         propertyName: 'CursorEndPosition',
-        value: position.endPosition
+        value: event.target.selectionEnd
       })
-      if (controlProp.AutoTab && controlProp.MaxLength! > 0) {
-        if (event.target instanceof HTMLDivElement) {
-          if (event.target.innerText.length === controlProp.MaxLength) {
+      const controlPropData = this.properties
+      if (controlPropData.AutoTab && controlPropData.MaxLength! > 0) {
+        if (event.target instanceof HTMLTextAreaElement) {
+          if (event.target.value.length === controlPropData.MaxLength) {
             EventBus.$emit('focusNextControlOnAutoTab')
           }
         }
       }
-      if (controlProp.PasswordChar && (event instanceof InputEvent ? event.data : event.key === 'Tab')) {
-        this.editableTextBoxRef.innerText = this.passwordCharFilter()
-      }
     } else {
-      throw new Error(
-        'Expected HTMLTextAreaElement but found different element'
-      )
+      throw new Error('Expected HTMLTextAreaElement but found different element')
     }
-    // if (controlProp.PasswordChar !== '' && controlProp.Text !== '') {
-    //   console.log(position.endPosition)
-    //   debugger
-    //   // this.setControlCaretPosition(true)
-    //   Vue.nextTick(() => {
-    //     (this.editableTextBoxRef as HTMLSpanElement).focus()
-    //     const el = this.editableTextBoxRef
-    //     const range = document.createRange()
-    //     const sel = window.getSelection()!
-    //     range.setStart(
-    //       el.childNodes[0],
-    //       position.endPosition + 1
-    //     )
-    //     range.collapse(true)
-    //     sel.removeAllRanges()
-    //     sel.addRange(range)
-    //   })
-    // }
+  }
+  /**
+   * @description style object is passed to :style attribute in div tag
+   * dynamically changing the styles of the component based on cssStyleProperty of
+   * textarea
+   * @function divcssStyleProperty
+   *
+   */
+  get divcssStyleProperty () {
+    const styleObject = this.cssStyleProperty
+    return {
+      ...styleObject,
+      display: 'none',
+      paddingTop: '2px',
+      paddingLeft: '2px',
+      cursor: this.controlCursor
+    }
   }
   /**
    * @description When user enters ctrl + enter cursor moves to next line
@@ -388,18 +369,15 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @param text new line character
    * @event keydown.enter.ctrl
    */
-  handleCtrlEnter () {
-    const { startPosition, endPosition } = this.getCursorPos()
-    const selection = window.getSelection()!
-    const range = selection.getRangeAt(0)
-    const br = document.createTextNode('\n')
-    range.deleteContents()
-    range.insertNode(br)
-    range.setStartAfter(br)
-    range.setEndAfter(br)
-    range.collapse(false)
-    selection.removeAllRanges()
-    selection.addRange(range)
+  handleCtrlEnter (el : HTMLTextAreaElement, text: string) {
+    el.focus()
+    if (typeof el.selectionStart === 'number' &&
+            typeof el.selectionEnd === 'number') {
+      const val = el.value
+      const selStart = el.selectionStart
+      el.value = val.slice(0, selStart) + text + val.slice(el.selectionEnd)
+      el.selectionEnd = el.selectionStart = selStart + text.length
+    }
   }
   /**
    * @description EnterKeyBehavior - if true when enter is pressed while editing the cursor moves to next line
@@ -411,14 +389,11 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   enterKeyBehavior (event: KeyboardEvent): boolean {
     if (this.properties.MultiLine) {
       if (event.ctrlKey) {
-        // this.handleCtrlEnter()
-        // const eTarget = event.target as HTMLTextAreaElement
+        // // this.handleCtrlEnter(this.textareaRef, '\n')
+        // // const eTarget = event.target as HTMLTextAreaElement
         // this.updateDataModel({ propertyName: 'Value', value: eTarget.value })
         return true
-      } else if (
-        this.properties.EnterKeyBehavior &&
-        this.properties.MultiLine
-      ) {
+      } else if (this.properties.EnterKeyBehavior && this.properties.MultiLine) {
         return true
       } else if (event.shiftKey) {
         return true
@@ -427,34 +402,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     event.preventDefault()
     return false
   }
-  insertTab (event: KeyboardEvent) {
-    debugger
-    if (!window.getSelection) return
-    const { startPosition, endPosition } = this.getCursorPos()
-    if (event.target instanceof HTMLSpanElement) {
-      let val = event.target.innerText
-      const selStart = startPosition
-      var text = '\u0009'
-      event.target.innerText = val.slice(0, selStart) + text + val.slice(endPosition)
-      // console.log(event.target.textContent!.includes('\t'))
-      // let range = document.createRange()
-      // var sel = document.getSelection()!
-      // console.log(startPosition + 1, endPosition + 1, val.slice(endPosition))
-      // console.log(event.target.innerText)
-      // range.setStart(this.editableTextBoxRef.childNodes[0], startPosition + 1)
-      // range.setEnd(this.editableTextBoxRef.childNodes[0], endPosition - 1)
-      // range.collapse(true)
-      // sel.removeAllRanges()
-      // sel.addRange(range)
-      const targetValue = event.target.innerText
-      // this.handleDelete(event)
-      this.isUpdatingText = true
-      this.properties.PasswordChar === ''
-        ? this.textAndValueUpdate(targetValue)
-        : this.handlePasswordChar(event)
-      // this.setControlCaretPosition(true)
-    }
-  }
+
   /**
    * @description  specifies how the control responds to the TAB key
    * when  TabKeyBehavior true in textBox tab spaces are added on press of tab Key
@@ -463,27 +411,89 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @param event its of type MouseEvent
    * @event keydown.tab
    */
-  tabKeyBehavior (event: KeyboardEvent) {
-    console.log(this.getCursorPos().endPosition)
-    debugger
+  // tabKeyBehavior (event: KeyboardEvent): boolean {
+  //   if (this.properties.TabKeyBehavior) {
+  //     const TABKEY = 9
+  //     if (event.target instanceof HTMLTextAreaElement) {
+  //       event.stopPropagation()
+  //       const eventTaget = event.target
+  //       let selectionStart = eventTaget.selectionStart
+  //       let selectionEnd = eventTaget.selectionEnd
+  //       console.log(selectionStart, selectionEnd)
+  //       const value = this.properties.Value!.toString()
+  //       if (event.keyCode === TABKEY) {
+  //         (event.target).value =
+  //         value.substring(0, selectionStart) +
+  //         '\t' +
+  //         value.substring(selectionEnd)
+  //         event.preventDefault()
+  //       }
+  //       (event.target).selectionStart =
+  //       // if (event.keyCode === TABKEY) {
+  //       //   this.updateDataModel({ propertyName: 'Value', value: value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd) })
+  //       //   // (event.target).value = value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd)
+  //       //   event.preventDefault()
+  //       // }
+  //       // debugger
+  //       // this.textareaRef.selectionStart = this.properties.Value!.toString().length
+  //       console.log(value)
+  //       debugger
+  //       // this.textareaRef.selectionStart = selectionStart + 1
+  //       // let range = document.createRange()
+  //       // var sel = document.getSelection()!
+  //       // range.setStart(this.hideSelectionDiv.childNodes[0], selectionStart + 1)
+  //       // range.setEnd(this.hideSelectionDiv.childNodes[0], selectionEnd + 1)
+  //       // range.collapse(true)
+  //       // sel.removeAllRanges()
+  //       // sel.addRange(range)
+  //       // selectionEnd = this.textareaRef.selectionEnd
+  //       // selectionStart = this.textareaRef.selectionStart
+  //       // const eTarget = event.target as HTMLTextAreaElement
+  //       // console.log(selectionStart, selectionEnd)
+  //       // console.log((this.properties.Value!.toString()).slice(0, selectionStart - 1))
+  //       // const updatedValue = (this.properties.Value!.toString()).slice(0, selectionStart - 1) + '\t' + (this.properties.Value!.toString()).slice(selectionEnd - 1)
+  //       // this.updateDataModel({ propertyName: 'Value', value: updatedValue })
+  //       // if (this.properties.PasswordChar !== '') {
+  //       //   this.handlePasswordChar(event)
+  //       // }
+  //       return false
+  //     } else {
+  //       throw new Error('Expected HTMLTextAreaElement but found different element')
+  //     }
+  //   } else {
+  //     return true
+  //   }
+  // }
+  tabKeyBehavior (event: KeyboardEvent): boolean {
     if (this.properties.TabKeyBehavior) {
-      this.insertTab(event)
-      event.preventDefault()
-      if (this.properties.AutoSize) {
-        this.updateAutoSize()
+      const TABKEY = 9
+      if (event.target instanceof HTMLTextAreaElement) {
+        event.stopPropagation()
+        const eventTaget = event.target
+        const selectionStart = eventTaget.selectionStart
+        const selectionEnd = eventTaget.selectionEnd
+        const value = this.properties.Value
+        // if (event.keyCode === TABKEY) {
+        //   (event.target).value =
+        //   value.substring(0, selectionStart) +
+        //   '\t' +
+        //   value.substring(selectionEnd)
+        //   event.preventDefault()
+        // }
+        if (event.keyCode === TABKEY) {
+          this.updateDataModel({ propertyName: 'Value', value: value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd) })
+          // (event.target).value = value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd)
+          event.preventDefault()
+        }
+        (event.target).selectionStart = selectionStart + 1;
+        (event.target).selectionEnd = (event.target).selectionStart
+        return false
+      } else {
+        throw new Error('Expected HTMLTextAreaElement but found different element')
       }
     } else {
-      EventBus.$emit('focusNextControlOnAutoTab')
+      return true
     }
-    let range = document.createRange()
-    var sel = document.getSelection()!
-    const { startPosition, endPosition } = this.getCursorPos()
-    console.log(this.getCursorPos().endPosition)
-    range.setStart(this.editableTextBoxRef.childNodes[0], 1)
-    // range.setEnd(this.editableTextBoxRef.childNodes[0], endPosition - 1)
-    range.collapse(true)
-    sel.removeAllRanges()
-    sel.addRange(range)
   }
   /**
    * @description updates the dataModel textBox object properties when user insert/delete text
@@ -493,53 +503,40 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event input
    *
    */
-
-  updateValueProp (event: InputEvent) {
-    const controlProp = this.properties
-    const text = this.editableTextBoxRef.innerText
-    if (controlProp.MaxLength !== 0 && text.length > controlProp.MaxLength!) {
-      this.editableTextBoxRef.innerText = controlProp.Value!.toString()
-      event.preventDefault()
-    } else {
-      controlProp.PasswordChar === ''
-        ? this.textAndValueUpdate(text)
-        : this.handlePasswordChar(event)
-    }
-  }
-
-  textAndValueUpdate (updateValue: string) {
+  textAndValueUpdate (event: InputEvent) {
     const controlPropData = this.properties
-    this.isUpdatingText = true
     if (controlPropData.AutoTab && controlPropData.MaxLength! > 0) {
-      if (updateValue.length === controlPropData.MaxLength) {
-        EventBus.$emit('focusNextControlOnAutoTab')
+      if (event.target instanceof HTMLTextAreaElement) {
+        if (event.target.value.length === controlPropData.MaxLength) {
+          EventBus.$emit('focusNextControlOnAutoTab')
+        }
       }
     }
     if (this.properties.AutoSize) {
       this.updateAutoSize()
     }
-    // if (!controlPropData.MultiLine) {
-    //   const newLineLength = updateValue.split('\n')
-    //   if (newLineLength.length > 0) {
-    //     this.editableTextBoxRef.innerText = newLineLength[0]
-    //   }
-    //   this.setControlCaretPosition(false)
-    // }
-    this.updateDataModel({
-      propertyName: 'Value',
-      value: updateValue
-    })
-    this.updateDataModel({
-      propertyName: 'Text',
-      value: updateValue
-    })
-    if (this.properties.ControlSource !== '') {
-      this.updateDataModelExtraData({
-        propertyName: 'ControlSourceValue',
-        value: updateValue
+    if (event.target instanceof HTMLTextAreaElement) {
+      if (!controlPropData.MultiLine) {
+        event.target.value = event.target.value.replace(/(\r\n|\n|\r)/gm, '')
+      }
+      this.updateDataModel({
+        propertyName: 'Value',
+        value: (event.target).value
       })
+      this.updateDataModel({
+        propertyName: 'Text',
+        value: (event.target).value
+      })
+      if (this.properties.ControlSource !== '') {
+        this.updateDataModelExtraData({
+          propertyName: 'ControlSourceValue',
+          value: (event.target).value
+        })
+      } else {
+        return undefined
+      }
     } else {
-      return undefined
+      throw new Error('Expected HTMLTextAreaElement but found different element')
     }
   }
 
@@ -570,78 +567,35 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     }
     e.preventDefault()
   }
-  setControlCaretPosition (isFocused: boolean) {
-    console.log(this.getCursorPos())
-    Vue.nextTick(() => {
-      (this.editableTextBoxRef as HTMLSpanElement).focus()
-      const el = this.editableTextBoxRef
-      const range = document.createRange()
-      const sel = window.getSelection()!
-      if (el.childNodes[0]) {
-        if (isFocused) {
-          range.setStart(
-            el.childNodes[0],
-            this.getCursorPos().endPosition
-          )
-        } else {
-          range.setStart(
-            el.childNodes[0],
-          this.properties.Value!.toString().length
-          )
-        }
-        range.collapse(true)
-        sel.removeAllRanges()
-        sel.addRange(range)
-      }
-    })
-  }
-  setCursorStartEndPosition (event: MouseEvent) {
-    this.openTextContextMenu(event)
-    this.handleDelete(event)
-  }
+
   @Watch('isEditMode')
   editModeValidation () {
     if (this.properties.AutoSize && !this.isEditMode) {
       this.updateAutoSize()
     }
-    if (this.editableTextBoxRef) {
-      this.originalText = this.editableTextBoxRef.innerText
+    if (this.textareaRef) {
+      this.originalText = this.textareaRef.value
       this.trimmedText = this.originalText.replace(/(\r\n|\n|\r)/gm, ',')
-    }
-    if (this.isEditMode) {
-      Vue.nextTick(() => {
-        this.editableTextBoxRef.innerText = this.passwordCharFilter()
-        this.setControlCaretPosition(false)
-      })
     }
   }
 
   @Watch('properties.MultiLine')
   multiLineValidate () {
-    // debugger
-    if (this.editableTextBoxRef) {
-      this.originalText = this.editableTextBoxRef.innerText
+    if (this.textareaRef) {
+      this.originalText = this.properties.Value!.toString()
       this.trimmedText = this.originalText.replace(/(\r\n|\n|\r)/gm, '¶')
+      // if (this.properties.MultiLine) {
+      //   console.log('ml is true')
+      // }
       if (this.properties.MultiLine) {
         this.trimmedText = this.originalText.replace(/¶/g, '\n')
-        this.editableTextBoxRef.innerText = this.trimmedText
-        if (this.properties.PasswordChar === '') {
-          this.updateDataModel({
-            propertyName: 'Value',
-            value: this.trimmedText
-          })
-        }
+        this.updateDataModel({ propertyName: 'Value', value: this.trimmedText })
       } else {
-        this.editableTextBoxRef.innerText = this.trimmedText
-        if (this.properties.PasswordChar === '') {
-          this.updateDataModel({
-            propertyName: 'Value',
-            value: this.trimmedText
-          })
-        }
+        this.updateDataModel({ propertyName: 'Value', value: this.trimmedText })
       }
     }
     if (this.properties.AutoSize) {
+      this.fitToSizeWhenMultiLine = true
       this.updateAutoSize()
     }
   }
@@ -650,6 +604,9 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   setAutoHeightWidth () {
     if (this.properties.AutoSize) {
       this.updateAutoSize()
+      if (this.properties.MultiLine) {
+        this.fitToSizeWhenMultiLine = true
+      }
     }
   }
   /**
@@ -658,31 +615,102 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   updateAutoSize () {
     if (this.properties.AutoSize === true) {
       this.$nextTick(() => {
-        const textareaRef: HTMLDivElement = this.textareaRef
-        this.updateDataModel({
-          propertyName: 'Width',
-          value: this.editableTextBoxRef.offsetWidth + 2
-        })
-        this.updateDataModel({
-          propertyName: 'Height',
-          value: this.editableTextBoxRef.offsetHeight + 5
-        })
-        if (this.properties.Value === '') {
-          this.updateDataModel({
-            propertyName: 'Height',
-            value: 16
-          })
+        const textareaRef: HTMLTextAreaElement = this.textareaRef
+        // replication of stype attribute to Label tag for autoSize property to work
+        let tempLabel: HTMLLabelElement = this.autoSizeTextarea
+        tempLabel.style.display = 'inline'
+        tempLabel.innerText = textareaRef.value
+        tempLabel.style.fontFamily = textareaRef.style.fontFamily
+        tempLabel.style.fontStretch = textareaRef.style.fontStretch
+        tempLabel.style.fontStyle = textareaRef.style.fontStyle
+        tempLabel.style.fontSize =
+            parseInt(textareaRef.style.fontSize) + 'px'
+        if (this.properties.MultiLine) {
+          if (!this.properties.WordWrap) {
+            tempLabel.style.whiteSpace = 'pre'
+            tempLabel.style.wordBreak = textareaRef.style.wordBreak
+          } else {
+            tempLabel.style.whiteSpace = 'break-spaces'
+            tempLabel.style.wordBreak = 'break-word'
+          }
+        } else {
+          tempLabel.style.whiteSpace = 'pre'
+          tempLabel.style.wordBreak = textareaRef.style.wordBreak
+        }
+        tempLabel.style.fontWeight = textareaRef.style.fontWeight
+        if (this.properties.MultiLine) {
+          if (this.fitToSizeWhenMultiLine) {
+            this.fitToSizeWhenMultiLine = false
+            this.updateDataModel({
+              propertyName: 'Width',
+              value: tempLabel.offsetWidth + 14
+            })
+          } else {
+            this.updateDataModel({
+              propertyName: 'Width',
+              value: tempLabel.offsetWidth
+            })
+          }
+        } else {
           this.updateDataModel({
             propertyName: 'Width',
-            value: 13
+            value: tempLabel.offsetWidth + 14
           })
         }
+        if (this.textareaRef.value === ' ' || this.textareaRef.value === '') {
+          this.updateDataModel({
+            propertyName: 'Height',
+            value: parseInt(textareaRef.style.fontSize) + 15
+          })
+        } else {
+          this.updateDataModel({
+            propertyName: 'Height',
+            value: tempLabel.offsetHeight + 15
+          })
+        }
+        tempLabel.innerText = ''
+        tempLabel.style.display = 'none'
       })
     } else {
       return undefined
     }
   }
-
+  async handleCtrl (event: KeyboardEvent) {
+    const key = event.keyCode
+    const controlProp = this.properties
+    let copiedText = this.properties.Value!.toString()
+    if (event.keyCode === 86 && controlProp.PasswordChar !== '') {
+      let selectStart = this.textareaRef.selectionStart
+      let selectEnd = this.textareaRef.selectionEnd
+      const text = await navigator.clipboard.readText()
+      let newText = copiedText.slice(0, selectStart) + text.slice(0, 1) + copiedText.slice(selectEnd)
+      this.updateDataModel({
+        propertyName: 'Value',
+        value: newText
+      })
+    }
+    if (key === 67 || key === 88) {
+      if (key === 88) {
+        let selectionStart = this.textareaRef.selectionStart
+        let selectionEnd = this.textareaRef.selectionEnd
+        let textAfterCut = copiedText.slice(0, selectionStart) + copiedText.slice(selectionEnd - 1)
+        this.updateDataModel({
+          propertyName: 'Value',
+          value: textAfterCut
+        })
+      }
+      if (controlProp.PasswordChar === '') {
+        const text = await navigator.clipboard.readText()
+        navigator.clipboard.writeText(text.slice(0, 1))
+      } else {
+        let selectionStart = this.textareaRef.selectionStart
+        // let selectionEnd = this.textareaRef.selectionEnd
+        // console.log(selectionStart, selectionEnd)
+        const text = controlProp.Value!.toString().slice(selectionStart, selectionStart + 1)
+        navigator.clipboard.writeText(text)
+      }
+    }
+  }
   created () {
     const propData: controlData = this.data
     if (propData.properties.ControlSource !== '') {
@@ -693,18 +721,14 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       })
       this.updateDataModel({ propertyName: 'Text', value: controlSourceValue })
     }
-    EventBus.$on('updateText', (updateValue: string) => {
-      this.editableTextBoxRef.innerText = updateValue
-      this.setControlCaretPosition(true)
-    })
   }
 
   /**
-   * @description watches ControlSource property
-   * @function updateControlSourceValue
-   * @param oldVal previous string value
-   * @param newVal  new/changed string value
-   */
+  * @description watches ControlSource property
+  * @function updateControlSourceValue
+  * @param oldVal previous string value
+  * @param newVal  new/changed string value
+  */
   @Watch('properties.ControlSource', { deep: true })
   updateControlSourceValue (newVal: string, oldVal: string) {
     const propData: controlData = this.data
@@ -731,32 +755,22 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @param event it is of type KeyboardEvent
    * @event keydown
    */
-  handleDelete (event: KeyboardEvent | MouseEvent) {
-    // debugger
-    if (event.target instanceof HTMLSpanElement) {
-      let eventType = ''
-      if (event instanceof KeyboardEvent && (event.keyCode === 8 || event.keyCode === 46 || (event.ctrlKey && event.code === 'KeyX') || (event.ctrlKey && event.code === 'KeyV') || (event.ctrlKey && event.code === 'KeyA'))) {
-        eventType = 'keyboard'
-      } else if (event instanceof MouseEvent && event.which === 3) {
-        eventType = 'mouse'
-      }
-      if (eventType) {
-        const { startPosition, endPosition } = this.getCursorPos()
+  handleDelete (event: KeyboardEvent) {
+    if (event.target instanceof HTMLTextAreaElement) {
+      if (event.keyCode === 8) {
         this.updateDataModel({
           propertyName: 'CursorStartPosition',
-          value: startPosition!
+          value: (event.target).selectionStart!
         })
         this.updateDataModel({
           propertyName: 'CursorEndPosition',
-          value: endPosition!
+          value: (event.target).selectionEnd!
         })
       } else {
         return undefined
       }
     } else {
-      throw new Error(
-        'Expected HTMLTextAreaElement but found different element'
-      )
+      throw new Error('Expected HTMLTextAreaElement but found different element')
     }
   }
   /**
@@ -767,19 +781,12 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    *
    */
   handleBlur (
-    event: TextEvent
+    event: TextEvent,
+    textareaRef: HTMLTextAreaElement,
+    hideSelectionDiv: HTMLDivElement
   ) {
-    // debugger
-    const { startPosition, endPosition } = this.getCursorPos()
-    this.getSelectionStart = startPosition
-    this.getSelectionEnd = endPosition
-    // const s = window.getSelection()!
-    // if (s.rangeCount >= 1) {
-    //   for (var i = 0; i < s.rangeCount; i++) {
-    //     console.log('a')
-    //     s.removeRange(s.getRangeAt(i))
-    //   }
-    // }
+    this.getSelectionStart = this.textareaRef.selectionStart
+    this.getSelectionEnd = this.textareaRef.selectionEnd
     // if (!this.properties.HideSelection) {
     //   if (event.target instanceof HTMLTextAreaElement) {
     //     const eventTarget = event.target
@@ -796,34 +803,70 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     //     firstPart.slice(0, eventTarget.selectionStart) +
     //     "<span style='background-color:lightblue'>" +
     //     firstPart.slice(eventTarget.selectionStart + Math.abs(0))
-    //     hideSelectionDiv.children[0].textContent = text
-    //     const divScrollTop = hideSelectionDiv.scrollTop
-    //     if (this.textareaScrollTop === 0) {
-    //       hideSelectionDiv.scrollTop = divScrollTop
-    //     } else {
-    //       hideSelectionDiv.scrollTop = this.textareaScrollTop
-    //     }
-    // } else {
-    //   throw new Error('Expected HTMLTextAreaElement but found different element')
-    // }
+    //     hideSelectionDiv.innerHTML = text
+    //   } else {
+    //     throw new Error('Expected HTMLTextAreaElement but found different element')
+    //   }
     // } else {
     //   return undefined
     // }
   }
+  /**
+   *@description hides the div when focus comes to textarea when hideSelection
+   * properties is false
+   * @function handleClick
+   * @param event its of FocusEvent
+   * @event click
+   */
+  handleClick (hideSelectionDiv: HTMLDivElement) {
+    // if (!this.properties.HideSelection) {
+    //   hideSelectionDiv.style.display = 'none'
+    // } else {
+    //   return undefined
+    // }
+  }
+  /**
+   * @description hides div instead of textarea when hideSelection is false
+   * when hideSelection properties is true textarea is shown
+   * when hideSelection properties is false div is shown
+   * @function divHide
+   * @param event its of type MouseEvent
+   * @event click
+   */
+  divHide (event: MouseEvent, textareaRef: HTMLTextAreaElement) {
+    if (this.isActivated) {
+      if (event.target instanceof HTMLSpanElement || event.target instanceof HTMLDivElement) {
+        (event.target).style.display = 'none'
+        textareaRef.style.display = 'block'
+        if (
+          (event.target).tagName === 'SPAN' &&
+      (event.target).parentNode!.nodeName === 'DIV'
+        ) {
+          ((event.target)
+            .parentNode as HTMLElement).style.display = 'none'
+        }
+        textareaRef.focus()
+        textareaRef.selectionStart = textareaRef.selectionEnd
+      }
+    }
+  }
+
   mounted () {
-    this.$el.focus()
+    this.$el.focus({
+      preventScroll: true
+    })
   }
   releaseEditMode (event: KeyboardEvent) {
-    this.$el.focus()
+    this.$el.focus({
+      preventScroll: true
+    })
     this.setContentEditable(event, false)
   }
   eventStoppers () {
     const eventStop = (event: Event) => event.stopPropagation()
-    return this.isEditMode === false
-      ? null
-      : {
-        keydown: eventStop
-      }
+    return this.isEditMode === false ? null : {
+      keydown: eventStop
+    }
   }
   @Watch('properties.TextAlign')
   textAlignValidate () {
@@ -849,65 +892,16 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       this.updateAutoSize()
     }
   }
-  @Watch('properties.Value')
-  updateSpanInnerText () {
-    if (!this.isUpdatingText) {
-      this.editableTextBoxRef.innerText = this.passwordCharFilter()
-      this.setControlCaretPosition(true)
-      this.isUpdatingText = false
-    } else {
-      this.isUpdatingText = false
-    }
-    const propData: controlProperties = this.properties
-    if (propData.Text !== propData.Value && propData.ControlSource === '') {
-      this.updateDataModel({ propertyName: 'Text',
-        value: this.properties.Value! })
-    }
-  }
-  @Watch('properties.PasswordChar')
-  updateInnerTextWhenPasswordCharUpdated () {
-    this.editableTextBoxRef.innerText = this.passwordCharFilter()
-  }
-  passwordCharFilter () {
-    // debugger
-    const controlProp = this.properties
-    if (controlProp.PasswordChar !== '' && controlProp.Value !== '') {
-      let filteredValue: string = ''
-      for (let index = 0; index < controlProp.Value!.toString().length; index++) {
-        filteredValue = filteredValue + controlProp.PasswordChar![0]
-      }
-      return filteredValue
-    }
-    return controlProp.Value!.toString()
-  }
   textBoxClick (event: MouseEvent) {
     if (this.toolBoxSelectControl === 'Select') {
       event.stopPropagation()
     }
     Vue.nextTick(() => {
       if (this.isEditMode) {
-        this.editableTextBoxRef.focus()
+        this.textareaRef.blur()
+        this.textareaRef.focus()
       }
     })
-  }
-  getCursorPos () {
-    let startPosition = 0
-    let endPosition = 0
-    const isSupported = typeof window.getSelection !== 'undefined'
-    if (isSupported) {
-      const selection = window.getSelection()!
-      if (selection.anchorOffset > selection.focusOffset) {
-        startPosition = selection.focusOffset
-        endPosition = selection.anchorOffset
-      } else if (selection.anchorOffset === selection.focusOffset) {
-        startPosition = selection.focusOffset
-        endPosition = selection.focusOffset
-      } else {
-        startPosition = selection.anchorOffset
-        endPosition = selection.focusOffset
-      }
-    }
-    return { startPosition: startPosition, endPosition: endPosition }
   }
   closeTextMenu () {
     EventBus.$emit('closeMenu')
