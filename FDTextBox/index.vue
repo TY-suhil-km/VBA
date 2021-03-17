@@ -34,7 +34,7 @@
           : handlePasswordChar($event)
       "
       @keydown.exact="properties.PasswordChar !== '' ? handleDelete($event) : null"
-      @keydown.ctrl="handleCtrl"
+      @keydown.ctrl.exact="handleCtrl"
       @blur="handleBlur($event, textareaRef, hideSelectionDiv)"
       @click="handleClick(hideSelectionDiv)"
       class="text-box-design"
@@ -50,7 +50,6 @@
       :style="divcssStyleProperty"
       @mouseover="updateMouseCursor"
       :title="properties.ControlTipText"
-      @keydown="handleCtrl"
       class="text-box-design"
     >
       {{
@@ -75,7 +74,6 @@ import {
 import FdControlVue from '@/api/abstract/FormDesigner/FdControlVue'
 import { DirectiveBinding } from 'vue/types/options'
 import { EventBus } from '@/FormDesigner/event-bus'
-import { controlProperties } from '@/FormDesigner/controls-properties'
 
 @Component({
   name: 'FDTextBox',
@@ -257,9 +255,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       }
     }
   }
-  @Watch('properties.PasswordChar')
-  handlePasswordCharFalse () {
-  }
   /**
    * @description updates the dataModel textBox object properties when user insert/delete text
    * inside textBox when passwordChar is set, updates text and values properties of textBox with entered character
@@ -268,12 +263,10 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event input
    *
    */
-  handlePasswordChar (event: Event) {
+  handlePasswordChar (event: TextEvent) {
     this.start = this.textareaRef.selectionStart
     this.end = this.textareaRef.selectionEnd
-    console.log(this.start, this.end)
     const controlPropData = this.properties
-    const startPos = this.textareaRef.selectionStart
     if (event.target instanceof HTMLTextAreaElement) {
       if (!controlPropData.MultiLine) {
         event.target.value = event.target.value.replace(/(\r\n|\n|\r)/gm, '')
@@ -282,17 +275,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         }
       }
     }
-    // console.log(this.textareaRef.selectionStart, startPos)
-    // let range = document.createRange()
-    // var sel = document.getSelection()!
-    // range.setStart(this.hideSelectionDiv.childNodes[0], startPos + 1)
-    // // range.setEnd(this.textareaRef.childNodes[0], endPosition - 1)
-    // range.collapse(true)
-    // sel.removeAllRanges()
-    // sel.addRange(range)
-    // console.log(this.hideSelectionDiv.childNodes[0])
     let newData
-    // console.log('insertion', this.textareaRef.selectionStart - 1)
     let text = this.properties.Text!
     let selectionDiff =
       (this.data.properties!.CursorStartPosition as number) !==
@@ -308,17 +291,17 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       } else if (text.length < event.target.value.length) {
         // insertion
         newData = [
-          text.slice(0, startPos - 1),
+          text.slice(0, event.target.selectionStart - 1),
           event.data,
-          text.slice(startPos - 1)
+          text.slice(event.target.selectionStart - 1)
         ].join('')
         this.updateDataModel({ propertyName: 'Text', value: newData })
         this.updateDataModel({ propertyName: 'Value', value: newData })
       } else if (text.length > event.target.value.length) {
         // deletion
         newData = [
-          text.slice(0, startPos),
-          text.slice(startPos + 1)
+          text.slice(0, event.target.selectionStart),
+          text.slice(event.target.selectionStart + 1)
         ].join('')
         this.updateDataModel({ propertyName: 'Text', value: newData })
         this.updateDataModel({ propertyName: 'Value', value: newData })
@@ -410,6 +393,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event keydown.tab
    */
   tabKeyBehavior (event: KeyboardEvent): boolean {
+    debugger
     this.start = this.textareaRef.selectionStart + 1
     this.end = this.textareaRef.selectionEnd + 1
     if (this.properties.TabKeyBehavior) {
@@ -417,22 +401,31 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       if (event.target instanceof HTMLTextAreaElement) {
         event.stopPropagation()
         const eventTaget = event.target
-        const selectionStart = eventTaget.selectionStart
-        const selectionEnd = eventTaget.selectionEnd
-        const value = this.properties.Value!.toString()
-        // if (event.keyCode === TABKEY) {
-        //   (event.target).value =
-        //   value.substring(0, selectionStart) +
-        //   '\t' +
-        //   value.substring(selectionEnd)
-        //   event.preventDefault()
-        // }
-        if (event.keyCode === TABKEY) {
-          this.updateDataModel({ propertyName: 'Value', value: value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd) })
-          event.preventDefault()
+        if (this.properties.PasswordChar !== '') {
+          const selectionStart = eventTaget.selectionStart
+          const selectionEnd = eventTaget.selectionEnd
+          const value = this.properties.Value!.toString()
+          if (event.keyCode === TABKEY) {
+            this.updateDataModel({ propertyName: 'Value', value: value.substring(0, selectionStart) + '\t' + value.substring(selectionEnd) })
+            event.preventDefault()
+          }
+          (event.target).selectionStart = selectionStart + 1;
+          (event.target).selectionEnd = (event.target).selectionStart
+        } else {
+          const selectionStart = eventTaget.selectionStart
+          const selectionEnd = eventTaget.selectionEnd
+          const value = eventTaget.value
+          if (event.keyCode === TABKEY) {
+            (event.target).value =
+            value.substring(0, selectionStart) +
+            '\t' +
+            value.substring(selectionEnd)
+            event.preventDefault()
+          }
+          this.textAndValueUpdate(event)
+          this.textareaRef.selectionStart = selectionStart + 1
+          this.textareaRef.selectionEnd = selectionEnd + 1
         }
-        (event.target).selectionStart = selectionStart + 1;
-        (event.target).selectionEnd = (event.target).selectionStart
         return false
       } else {
         throw new Error('Expected HTMLTextAreaElement but found different element')
@@ -449,7 +442,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event input
    *
    */
-  textAndValueUpdate (event: InputEvent) {
+  textAndValueUpdate (event: Event) {
     const controlPropData = this.properties
     if (controlPropData.AutoTab && controlPropData.MaxLength! > 0) {
       if (event.target instanceof HTMLTextAreaElement) {
@@ -625,26 +618,41 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     const key = event.keyCode
     const controlProp = this.properties
     let copiedText = this.properties.Value!.toString()
+    let selectionStart = this.textareaRef.selectionStart
+    let selectionEnd = this.textareaRef.selectionEnd
     if (event.keyCode === 86 && controlProp.PasswordChar !== '') {
       let selectStart = this.textareaRef.selectionStart
       let selectEnd = this.textareaRef.selectionEnd
       const text = await navigator.clipboard.readText()
       let newText = copiedText.slice(0, selectStart) + text.slice(0, 1) + copiedText.slice(selectEnd)
       this.updateDataModel({
-        propertyName: 'Value',
+        propertyName: 'Text',
         value: newText
       })
     }
-    if (key === 67 || key === 88) {
-      if (key === 88) {
-        let selectionStart = this.textareaRef.selectionStart
-        let selectionEnd = this.textareaRef.selectionEnd
-        let textAfterCut = copiedText.slice(0, selectionStart) + copiedText.slice(selectionEnd - 1)
-        this.updateDataModel({
-          propertyName: 'Value',
-          value: textAfterCut
-        })
+    if (key === 88) {
+      debugger
+      if (controlProp.PasswordChar === '') {
+        const text = await navigator.clipboard.readText()
+        console.log(text)
+        navigator.clipboard.writeText(text.slice(0, 1))
+      } else {
+        // let selectionStart = this.textareaRef.selectionStart
+        // let selectionEnd = this.textareaRef.selectionEnd
+        // console.log(selectionStart, selectionEnd)
+        const text = controlProp.Value!.toString().slice(selectionStart, selectionStart + 1)
+        navigator.clipboard.writeText(text)
+        selectionStart += 1
       }
+      let textAfterCut = copiedText.slice(0, selectionStart) + copiedText.slice(selectionEnd)
+      this.updateDataModel({
+        propertyName: 'Text',
+        value: textAfterCut
+      })
+      this.textareaRef.selectionStart = selectionStart
+      this.textareaRef.selectionEnd = selectionStart
+    }
+    if (key === 67) {
       if (controlProp.PasswordChar === '') {
         const text = await navigator.clipboard.readText()
         navigator.clipboard.writeText(text.slice(0, 1))
@@ -657,6 +665,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       }
     }
   }
+
   created () {
     const propData: controlData = this.data
     if (propData.properties.ControlSource !== '') {
