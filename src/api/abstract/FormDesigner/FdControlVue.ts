@@ -16,13 +16,11 @@ export default class FdControlVue extends Vue {
   @Prop({ required: true, type: Boolean }) public isRunMode!: boolean
   @Prop({ required: true, type: Boolean }) public isEditMode!: boolean
   @PropSync('isEditMode') public syncIsEditMode!: boolean
-  @Prop()
-  toolBoxSelectControl!: string
+  @Prop() toolBoxSelectControl: string
   @State((state: rootState) => state.fd.toolBoxSelect) toolBoxSelect!: fdState['toolBoxSelect']
   @Prop({ required: true, type: Object as PropType<controlData> }) public data! : controlData
   @Prop({ required: true, type: String }) public controlId! : string
-  @Prop({ default: false })
-  isActivated!: boolean
+  @Prop({ default: false }) isActivated: boolean
   isContentEditable: boolean = false
   selectionData :Array<string> = [];
   matchEntry: Array<number> = [];
@@ -32,7 +30,7 @@ export default class FdControlVue extends Vue {
   tempWeight: string = '400';
   tempStretch: string = 'normal';
   isVisible: boolean = false;
-  tempListBoxComboBoxEvent!: Event
+  tempListBoxComboBoxEvent: Event;
   isLargeChange: boolean = false;
   labelStyle = {}
   reverseStyle = {
@@ -63,31 +61,25 @@ export default class FdControlVue extends Vue {
    // global variable to keep track of TripleState when enabled
    protected tripleState:number = 0
 
-   // dynamic ref form textbox component
-   // dynamic ref form textbox component
-
-  protected autoSizeTextarea!: HTMLLabelElement
+  // dynamic ref form textbox component
+  protected autoSizeTextarea: HTMLLabelElement
 
   // dynamic ref from checkbox component
-  // dynamic ref from checkbox component
-
-  protected autoSizecheckbox!: HTMLDivElement
+  protected autoSizecheckbox: HTMLDivElement
 
   // dynamic ref from optionButton component
   protected autoSizeOptionButton! : HTMLDivElement
 
   // ref of respective components
-  // ref of respective components
-
-  protected checkboxRef!: HTMLDivElement
-  protected optionBtnRef!: HTMLDivElement
-  protected textareaRef!: HTMLTextAreaElement
+  protected checkboxRef: HTMLDivElement
+  protected optionBtnRef: HTMLDivElement
+  protected textareaRef: HTMLTextAreaElement
 
   protected textSpanRef!: HTMLSpanElement
-  protected imageRef!: HTMLImageElement
-  protected logoRef!: HTMLSpanElement
-  protected componentRef!: HTMLSpanElement
-  protected editableTextRef!: FDEditableText
+  protected imageRef: HTMLImageElement
+  protected logoRef: HTMLSpanElement
+  protected componentRef : HTMLSpanElement
+  protected editableTextRef: FDEditableText
 
   preventClickOnce: boolean = false
   addEventCustomCallback (e: CustomMouseEvent) {

@@ -676,44 +676,18 @@ export default class FDTabStrip extends FdControlVue {
         if (count < this.scrolling.children.length) {
           for (let j = 0; j < Math.trunc(count); j++) {
             if (this.properties.Style as number === 1) {
-              this.rowsCount = this.rowsCount + (parseInt(a) + 7 + 'px') + ' '
+              this.rowsCount = this.rowsCount + (parseInt(a) + 8 + 'px') + ' '
             } else if (this.properties.Style as number === 0) {
               this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
             }
-            // if (j === this.properties.Value) {
-            //   if (this.properties.Style as number === 1) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 3 + 'px') + ' '
-            //   } else if (this.properties.Style as number === 0) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
-            //   }
-            // } else {
-            //   if (this.properties.Style as number === 1) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 3 + 'px') + ' '
-            //   } else if (this.properties.Style as number === 0) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
-            //   }
-            // }
           }
         } else {
           for (let j = 0; j < Math.trunc(count); j++) {
             if (this.properties.Style as number === 1) {
-              this.rowsCount = this.rowsCount + (parseInt(a) + 7 + 'px') + ' '
+              this.rowsCount = this.rowsCount + (parseInt(a) + 8 + 'px') + ' '
             } else if (this.properties.Style as number === 0) {
               this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
             }
-            // if (j === k) {
-            //   if (this.properties.Style as number === 1) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 3 + 'px') + ' '
-            //   } else if (this.properties.Style as number === 0) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
-            //   }
-            // } else {
-            //   if (this.properties.Style as number === 1) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 3 + 'px') + ' '
-            //   } else if (this.properties.Style as number === 0) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
-            //   }
-            // }
           }
         }
         const moveHeight = controlProp.Height
@@ -769,21 +743,6 @@ export default class FDTabStrip extends FdControlVue {
               // const diff = (totalHeight / count) - 7
               const diff = totalHeight - totalgridHeight
               const columnsCount = Math.ceil(this.scrolling.children.length / (Math.trunc(count)))
-              // for (let j = 1; j <= columnsCount; j++) {
-              //   if ((j * Math.trunc(count)) - 1 < pagecount) {
-              //     const myref = this.scrolling.children[(j * Math.trunc(count)) - 1].children[0].children[1] as HTMLDivElement
-              //     const myDivref = this.scrolling.children[(j * Math.trunc(count)) - 1] as HTMLDivElement
-              //     myDivref.style.height = `${myref.clientHeight + diff + 5}px`
-              //     myref.style.height = `${myref.clientHeight + diff - 24}px`
-              //   }
-              // }
-              // for (let i = 0; i < pagecount; i++) {
-              //   if (i < pagecount - pagecount % Math.trunc(count)) {
-              //     const labelRef = this.scrolling.children[i].children[0].children[1] as HTMLLabelElement
-              //     const divRef = this.scrolling.children[i] as HTMLDivElement
-              //     labelRef.style.height = `${diff}px`
-              //   }
-              // }
               for (let j = 1; j <= columnsCount; j++) {
                 if ((j * Math.trunc(count)) - 1 < pagecount) {
                   const myref = this.scrolling.children[(j * Math.trunc(count)) - 1].children[0].children[1] as HTMLDivElement
@@ -806,7 +765,7 @@ export default class FDTabStrip extends FdControlVue {
             }
           }
         }
-      } else {
+      } else if (controlProp.TabFixedHeight === 0) {
         for (let index = 0; index < pagecount; index++) {
           const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
           const mydivref = this.scrolling.children[index] as HTMLDivElement
@@ -912,6 +871,7 @@ export default class FDTabStrip extends FdControlVue {
         this.widthValue = this.scrolling.clientWidth
       })
     }
+    console.log(this.topValue)
     return {
       position: 'absolute',
       display:

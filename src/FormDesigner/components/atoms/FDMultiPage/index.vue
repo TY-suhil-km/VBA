@@ -1,4 +1,5 @@
 <template>
+  <div>
     <div
       class="outer-page"
       :style="pageStyleObj"
@@ -104,6 +105,7 @@
         </div>
       </div>
     </div>
+  </div>
 </template>
 
 <script lang="ts">
@@ -928,9 +930,19 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
             if (controlProp.TabFixedWidth! === 0) {
               if (controlProp.TabOrientation === 2 || controlProp.TabOrientation === 3) {
                 if (controlProp.MultiRow) {
-                  width = (controlProp.Width! - this.widthValue) + 'px'
+                  console.log(this.widthValue, this.tempWidth)
+                  if (controlProp.TabOrientation === 3) {
+                    width = (controlProp.Width! - this.widthValue - 8) + 'px'
+                  } else {
+                    width = (controlProp.Width! - this.widthValue) + 'px'
+                  }
                 } else {
-                  width = `${controlProp.Width! - this.tempWidth - 19}px`
+                  console.log(this.widthValue, this.tempWidth)
+                  if (controlProp.TabOrientation === 3) {
+                    width = (controlProp.Width! - this.widthValue - 8) + 'px'
+                  } else {
+                    width = `${controlProp.Width! - this.tempWidth - 22}px`
+                  }
                 }
               } else {
                 width = controlProp.Width! - controlProp.Font!.FontSize! - 26 + 'px'
@@ -955,9 +967,9 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
               if (controlProp.TabOrientation === 2 ||
               controlProp.TabOrientation === 3) {
                 if (controlProp.MultiRow) {
-                  width = (controlProp.Width! - this.widthValue - 6) + 'px'
+                  width = (controlProp.Width! - this.widthValue - 2) + 'px'
                 } else {
-                  width = (controlProp.Width! - this.widthValue - 6) + 'px'
+                  width = (controlProp.Width! - this.widthValue - 2) + 'px'
                 }
               } else {
                 width = controlProp.Width! - controlProp.Font!.FontSize! - 26 + 'px'
@@ -977,7 +989,12 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
         if (controlProp.TabOrientation === 0 || controlProp.TabOrientation === 1) {
           if (controlProp.MultiRow) {
             if (this.scrolling) {
-              height = (controlProp.Height! - this.scrolling.clientHeight + 1) + 'px'
+              if (controlProp.TabOrientation === 0) {
+                height = (controlProp.Height! - this.scrolling.clientHeight + 1) + 'px'
+              } else {
+                height = (controlProp.Height! - this.scrolling.clientHeight - 12) + 'px'
+                console.log(height)
+              }
             } else {
               height = (controlProp.Height! -
                 this.topValue + 5) + 'px'
@@ -1000,7 +1017,12 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
             } else {
               if (controlProp.TabFixedHeight! === 0) {
                 if (this.scrolling) {
-                  height = (controlProp.Height! - this.scrolling.clientHeight + 3) + 'px'
+                  if (controlProp.TabOrientation === 0) {
+                    height = (controlProp.Height! - this.scrolling.clientHeight + 1) + 'px'
+                  } else {
+                    height = (controlProp.Height! - this.scrolling.clientHeight - 12) + 'px'
+                    console.log(height)
+                  }
                 } else {
                   if (controlProp.Font!.FontSize! === 72) {
                     height = controlProp.Height! - controlProp.Font!.FontSize! - 27 + 'px'
@@ -1067,7 +1089,8 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
             }
           }
         } else {
-          height = `${controlProp.Height! + 2}px`
+          console.log(controlProp.Height)
+          height = `${controlProp.Height! + 3}px`
         }
       }
     } else {
@@ -1125,30 +1148,31 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
                   : controlProp.TabFixedHeight! === 0
                     ? this.tempHeight + 16 + 'px'
                     : '33px'
-              : '-6px'
+              : '0px'
           : '0px',
       height: controlProp.TabOrientation === 1 ? (parseInt(height) + 5) + 'px' : (parseInt(height) - 3) + 'px',
       // width: controlProp.TabOrientation === 3 ? controlProp.Style === 0 ? (parseInt(width) + 4) + 'px' : parseInt(width) + 'px' : width,
       width: controlProp.TabOrientation === 3 ? (parseInt(width) + 4) + 'px' : width,
       left:
         controlProp.Style !== 2
-          ? controlProp.Style === 1 ? controlProp.TabOrientation === 2
-            ? controlProp.MultiRow ? this.widthValue + 'px' : controlProp.TabFixedWidth! > 0
-              ? controlProp.TabFixedWidth! + 13 + 'px'
-              : controlProp.TabFixedWidth! === 0
-                ? controlProp.TabOrientation === 2 ||
-                controlProp.TabOrientation === 3
-                  ? `${this.tempWidth + 13}px`
-                  : controlProp.Font!.FontSize! + 23 + 'px'
-                : '43px'
-            : '3px'
+          ? controlProp.Style === 1
+            ? controlProp.TabOrientation === 2
+              ? controlProp.MultiRow
+                ? this.widthValue + 'px' : controlProp.TabFixedWidth! > 0
+                  ? controlProp.TabFixedWidth! + 13 + 'px'
+                  : controlProp.TabFixedWidth! === 0
+                    ? controlProp.TabOrientation === 2 || controlProp.TabOrientation === 3
+                      ? `${this.tempWidth + 22}px`
+                      : controlProp.Font!.FontSize! + 23 + 'px'
+                    : '43px'
+              : '3px'
             : controlProp.TabOrientation === 2
               ? controlProp.MultiRow ? this.widthValue + 'px' : controlProp.TabFixedWidth! > 0
-                ? controlProp.TabFixedWidth! + 12 + 'px'
+                ? controlProp.TabFixedWidth! + 10 + 'px'
                 : controlProp.TabFixedWidth! === 0
                   ? controlProp.TabOrientation === 2 ||
                 controlProp.TabOrientation === 3
-                    ? `${this.tempWidth + 12}px`
+                    ? `${this.tempWidth + 10}px`
                     : controlProp.Font!.FontSize! + 20 + 'px'
                   : '40px'
               : '0px'
@@ -1377,7 +1401,7 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
             }
           }
         }
-      } else {
+      } else if (this.properties.TabFixedHeight === 0) {
         for (let index = 0; index < pagecount; index++) {
           const myref = this.scrolling.children[index].children[0].children[1] as HTMLDivElement
           const mydivref = this.scrolling.children[index] as HTMLDivElement
