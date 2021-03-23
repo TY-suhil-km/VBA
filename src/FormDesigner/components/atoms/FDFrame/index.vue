@@ -15,7 +15,7 @@
     @keyup.stop="selectMultipleCtrl($event, false)"
   >
     <legend ref="fieldsetRef" :style="legendCssStyleProperty">{{ properties.Caption }}</legend>
-    <div :style="scrollSize" ref="frame" >
+    <div :style="scrollSize()" ref="frame" >
       <div>
       <Container
       :style="frameContainerStyleObj"
@@ -34,6 +34,7 @@
       @deActiveControl="deActControl"
       @dragSelectorControl="dragSelectorControl"
       @addControlObj="addContainerControl"
+      :frameTop="parseInt(scrollSize().top)"
       />
       </div>
   </div>
@@ -86,14 +87,16 @@ export default class FDFrame extends Mixins(FdContainerVue) {
   protected get frameContainerStyleObj (): Partial<CSSStyleDeclaration> {
     const scale = (this.properties.Zoom!) / 100
     return {
-      transform: `scale(${scale})`,
-      transformOrigin: `top left`
+      // transform: `scale(${scale})`,
+      // transformOrigin: `top left`,
+      // height: '100%',
+      // width: '100%'
     }
   }
 
   mounted () {
-    // this.scrollLeftTop(this.data)
     this.scrollTopCalculate()
+    this.scrollSize()
     if (this.fieldsetRef) {
       this.captionHeight = this.fieldsetRef.offsetHeight!
     }
@@ -102,6 +105,7 @@ export default class FDFrame extends Mixins(FdContainerVue) {
   @Watch('properties.Caption')
   captionValidate () {
     this.scrollTopCalculate()
+    this.scrollSize()
     Vue.nextTick(() => {
       if (this.properties.Caption === '') {
         this.captionHeight = 0
@@ -111,9 +115,20 @@ export default class FDFrame extends Mixins(FdContainerVue) {
     })
   }
 
+  @Watch('properties.Width')
+  widthvalidate () {
+    this.scrollSize()
+  }
+
+  @Watch('properties.Height')
+  heightvalidate () {
+    this.scrollSize()
+  }
+
   @Watch('properties.Font', { deep: true })
   updateFont () {
     this.scrollTopCalculate()
+    this.scrollSize()
     Vue.nextTick(() => {
       this.captionHeight = this.fieldsetRef.offsetHeight!
     })
@@ -137,7 +152,7 @@ export default class FDFrame extends Mixins(FdContainerVue) {
     const controlProp = this.data.properties
     return {
       backgroundColor: controlProp.BackColor,
-      width: `${controlProp.Width}px`,
+      width: `${controlProp.Width! - 0.5}px`,
       height: `${controlProp.Height}px`,
       overflow: 'hidden'
     }
@@ -226,7 +241,7 @@ export default class FDFrame extends Mixins(FdContainerVue) {
       zIndex: '1'
     }
   }
-  get scrollSize () {
+  scrollSize () {
     const controlProp = this.data.properties!
     return {
       width: `${controlProp.Width! - 3}px`,
@@ -238,8 +253,6 @@ export default class FDFrame extends Mixins(FdContainerVue) {
 
   scrollTopCalculate () {
     if (this.fieldsetRef && this.properties.Caption !== '') {
-      this.updateDataModel({ propertyName: 'Width', value: this.properties.Width! - 1 })
-      this.updateDataModel({ propertyName: 'Width', value: this.properties.Width! + 1 })
       return '-' + ((this.captionHeight / 2) - 1) + 'px'
     } else {
       return ''

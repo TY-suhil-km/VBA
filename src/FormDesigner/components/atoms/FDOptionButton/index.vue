@@ -317,7 +317,7 @@ export default class FDOptionButton extends Mixins(FdControlVue) {
     this.editableTextVerify()
     if (!this.properties.Enabled) {
       this.spanRef.style.backgroundColor = 'rgba(220, 220, 220, 1)'
-      this.imageProperty.filter = 'sepia(0) grayscale(1) blur(3px) opacity(0.2)'
+      this.imageProperty.filter = 'sepia(0) grayscale(1) blur(4px)'
     } else {
       this.spanRef.style.backgroundColor = 'white'
       this.imageProperty.filter = ''
@@ -446,9 +446,10 @@ export default class FDOptionButton extends Mixins(FdControlVue) {
     const controlProp = this.properties
     return {
       boxShadow:
-        controlProp.SpecialEffect === 0 ? '' : '-1px -1px gray',
+      controlProp.SpecialEffect === 0 ? '' : '-1px -1px gray',
       border: controlProp.SpecialEffect === 0 ? '2px solid gray' : '',
-      height: controlProp.SpecialEffect === 0 ? '6px' : '10px'
+      height: controlProp.SpecialEffect === 0 ? '6px' : '10px',
+      cursor: this.controlCursor
     }
   }
 
@@ -486,7 +487,9 @@ export default class FDOptionButton extends Mixins(FdControlVue) {
    */
   mounted () {
     this.verifyValue()
-    this.$el.focus()
+    this.$el.focus({
+      preventScroll: true
+    })
     this.controlSource()
     if (this.properties.Picture) {
       this.positionLogo(this.properties.PicturePosition)
@@ -494,7 +497,9 @@ export default class FDOptionButton extends Mixins(FdControlVue) {
     }
   }
   releaseEditMode (event: KeyboardEvent) {
-    this.$el.focus()
+    this.$el.focus({
+      preventScroll: true
+    })
     this.setContentEditable(event, false)
   }
   optionBtnClick (event: MouseEvent) {

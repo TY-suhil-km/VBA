@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "strictPropertyInitialization":false,
+    "strictPropertyInitialization":true,
     "sourceMap": true,
     "baseUrl": ".",
     "types": [

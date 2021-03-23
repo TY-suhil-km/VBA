@@ -1,5 +1,7 @@
 <template>
-  <div>
+  <div :class="[
+  (data.properties.Style === 1) ? (data.properties.TabOrientation === 2 || data.properties.TabOrientation === 3 ? (indexValue === data.properties.Value? 'inside-page' : 'outer-button23'):
+  (data.properties.TabOrientation === 0 || data.properties.TabOrientation === 1 ? (indexValue === data.properties.Value? 'inside-page01' : 'outer-button01') : '')): '' ]">
     <input
       :name="pageData.Name"
       type="radio"
@@ -8,9 +10,7 @@
       "
     />
     <label
-      @mousedown="
-        !getDisableValue(pageData.Enabled) && isChecked(indexValue, pageValue)
-      "
+      @mousedown="!getDisableValue(pageData.Enabled, indexValue, pageValue) && isChecked(indexValue, pageValue)"
       @keydown.delete.exact.stop="deleteMultiPageControl"
       :tabindex="0"
       :class="[
@@ -110,26 +110,31 @@ import {
   }
 })
 export default class FDControlTabs extends Vue {
-  @Prop() data: controlData;
-  @Prop() pageValue: string;
-  @Prop() indexValue: number;
-  @Prop() pageData: controlData;
-  @Prop() isRunMode: boolean;
-  @Prop() isEditMode: boolean;
-  @Prop() isItalic: boolean;
-  @Prop() tempStretch: string;
-  @Prop() controlCursor: string;
-  @Prop() tempWeight: string;
-  @Prop() getMouseCursorData: string;
-  @Prop() setFontStyle: string;
-  @Prop() tempWidth: number;
+  @Prop() data!: controlData;
+  @Prop() pageValue!: string;
+  @Prop() indexValue!: number;
+  @Prop() pageData!: controlData;
+  @Prop() isRunMode!: boolean;
+  @Prop() isEditMode!: boolean;
+  @Prop() isItalic!: boolean;
+  @Prop() tempStretch!: string;
+  @Prop() controlCursor!: string;
+  @Prop() tempWeight!: string;
+  @Prop() getMouseCursorData!: string;
+  @Prop() setFontStyle!: string;
+  @Prop() tempWidth!: number;
 
+  @Emit('isMouseDown')
+  isMouseDown (indexValue: number, pageValue: string) {
+    return { indexValue: indexValue, pageValue: pageValue }
+  }
   /**
    * @description getDisableValue checks for the RunMode of the control and then returns after checking for the Enabled
    * and the Locked property
    * @function getDisableValue
    */
-  getDisableValue (enabledValue: boolean) {
+  getDisableValue (enabledValue: boolean, indexValue: number, pageValue: string) {
+    this.isMouseDown(indexValue, pageValue)
     if (this.isRunMode) {
       if (!this.data.properties.Enabled) {
         return true
@@ -212,6 +217,7 @@ export default class FDControlTabs extends Vue {
    *
    */
   protected get styleLabelObj () {
+    debugger
     const controlProp = this.data.properties
     const font: font = controlProp.Font
       ? controlProp.Font
@@ -224,10 +230,6 @@ export default class FDControlTabs extends Vue {
         FontStrikethrough: true
       }
     return {
-      height:
-        controlProp.TabFixedHeight! > 0
-          ? controlProp.TabFixedHeight + 'px'
-          : '',
       width:
         controlProp.TabFixedWidth! > 0
           ? controlProp.TabFixedWidth + 'px'
@@ -235,7 +237,7 @@ export default class FDControlTabs extends Vue {
             ? this.tempWidth + 'px'
             : '',
       minWidth: controlProp.TabOrientation === 2 || controlProp.TabOrientation === 3 ? controlProp.TabFixedWidth !== 0 ? '0px' : '30px' : '0px',
-      top: controlProp.TabOrientation === 1 ? '5px' : '0px',
+      // top: controlProp.TabOrientation === 1 ? '5px' : '0px',
       fontFamily: font.FontStyle! !== '' ? this.setFontStyle : font.FontName!,
       fontSize: `${font.FontSize}px`,
       fontStyle: font.FontItalic || this.isItalic ? 'italic' : '',
@@ -262,7 +264,7 @@ export default class FDControlTabs extends Vue {
             ? 'gray'
             : ''
           : '',
-      paddingTop: controlProp.TabFixedHeight! > 0 && controlProp.TabOrientation === 1 ? (this.indexValue === this.data.properties.Value ? '15px' : '11px') : controlProp.TabFixedHeight! > 0 && controlProp.TabOrientation !== 0 ? (this.indexValue === this.data.properties.Value ? '0px' : '4px') : this.indexValue === this.data.properties.Value ? '5px' : '1px',
+      paddingTop: this.data.properties.Style === 1 ? '' : controlProp.TabFixedHeight! > 0 && controlProp.TabOrientation === 1 ? (this.indexValue === this.data.properties.Value ? '15px' : '11px') : controlProp.TabFixedHeight! > 0 && controlProp.TabOrientation !== 0 ? (this.indexValue === this.data.properties.Value ? '0px' : '4px') : this.indexValue === this.data.properties.Value ? '5px' : this.data.properties.TabOrientation === 1 || this.data.properties.TabOrientation === 3 ? '1px' : this.data.properties.Style === 0 && this.data.properties.TabOrientation === 2 ? '1px' : '',
       paddingBottom: controlProp.Style !== 1 ? controlProp.TabFixedHeight! > 0 ? '0px' : '9px' : '',
       marginTop:
         this.data.properties.TabOrientation === 1
@@ -272,20 +274,20 @@ export default class FDControlTabs extends Vue {
           : this.data.properties.TabOrientation === 0
             ? this.indexValue === this.data.properties.Value
               ? ''
-              : '5px'
+              : this.data.properties.Style === 0 ? '5px' : ''
             : '',
-      borderTop: '2px solid white',
+      borderTop: this.data.properties.Style !== 1 ? '2px solid white' : '',
       borderRight:
-        this.data.properties.TabOrientation === 2 ? '0px' : '2px solid gray',
+        this.data.properties.Style !== 1 ? this.data.properties.TabOrientation === 2 && this.data.properties.Style === 0 ? '0px' : '2px solid gray' : '',
       borderBottom:
-        this.data.properties.TabOrientation === 2 ||
+      this.data.properties.Style !== 1 ? this.data.properties.TabOrientation === 2 ||
         this.data.properties.TabOrientation === 3
-          ? '2px solid gray'
-          : this.data.properties.TabOrientation === 1
-            ? this.data.type === 'TabStrip'
-              ? '6px solid gray'
-              : '2px solid gray'
-            : 'none',
+        ? '2px solid gray'
+        : this.data.properties.TabOrientation === 1
+          ? this.data.type === 'TabStrip'
+            ? this.data.properties.Style !== 1 ? '2px solid gray' : '2px solid gray'
+            : '2px solid gray'
+          : 'none' : '',
       marginBottom:
         this.data.type === 'MultiPage'
           ? this.data.properties.TabOrientation === 1
@@ -294,10 +296,15 @@ export default class FDControlTabs extends Vue {
               : '6px'
             : ''
           : '',
-      borderRadius: '3px',
+      // borderRadius: '3px',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      height:
+        controlProp.TabFixedHeight! > 0
+          ? controlProp.TabFixedHeight + 'px'
+          : ''
+      // minHeight: '50px'
     }
   }
   @Emit('deleteMultiPageControl')
@@ -309,11 +316,12 @@ export default class FDControlTabs extends Vue {
 
 <style>
 .forButton {
-  margin: 3px;
-  border-radius: 3px;
+  /* margin: 3px;
+  border-radius: 3px; */
   z-index: 2;
-  border: 2px outset !important;
+  /* border: 2px outset !important; */
   overflow: hidden;
+  border: 1px solid rgb(224, 223, 223);
 }
 .page [type="radio"]:checked ~ label.forButton {
   margin: 3px;
@@ -323,20 +331,51 @@ export default class FDControlTabs extends Vue {
   z-index: 2;
   background: gray;
 }
-.active-item-button {
+.outer-button23 {
+  margin: 4px;
+  border-left: 1px solid whitesmoke;
+  border-top: 1px solid whitesmoke;
+  border-bottom: 1px solid gray;
+  border-right:  1px solid gray;
+}
+.outer-button01 {
+  margin-right: 5px;
+  border-left: 1px solid whitesmoke;
+  border-top: 1px solid whitesmoke;
+  border-bottom: 1px solid gray;
+  border-right:  1px solid gray;
+  margin-bottom: 3px;
+}
+.inside-page {
+  border-right: 1px solid whitesmoke;
+  border-bottom: 1px solid whitesmoke;
+  border-top: 1px solid gray;
+  border-left:  1px solid gray;
   margin: 3px;
-  margin-bottom: 6px !important;
-  border-right: 2px solid gray;
+}
+.inside-page01 {
+  margin-right: 5px;
+  border-right: 1px solid whitesmoke;
+  border-bottom: 1px solid whitesmoke;
+  border-top: 1px solid gray;
+  border-left:  1px solid gray;
+  margin-bottom: 3px;
+}
+.active-item-button {
+  /* margin: 3px; */
+  /* margin-bottom: 6px !important; */
+  /* border-right: 2px solid gray;
   border-bottom: none;
-  border-radius: 3px;
+  border-radius: 3px; */
+  border: 1px solid rgb(179, 175, 175);
   z-index: 2;
   background-color: gray;
   border: 2px inset !important;
   overflow: hidden;
 }
 .forLeft {
-  border-bottom: none;
-  border-radius: 3px;
+  /* border-bottom: none;
+  border-radius: 3px; */
   width: fit-content;
   overflow: hidden;
   padding-top: 8px;
