@@ -110,19 +110,32 @@ import {
   }
 })
 export default class FDControlTabs extends Vue {
-  @Prop() data: controlData;
-  @Prop() pageValue: string;
-  @Prop() indexValue: number;
-  @Prop() pageData: controlData;
-  @Prop() isRunMode: boolean;
-  @Prop() isEditMode: boolean;
-  @Prop() isItalic: boolean;
-  @Prop() tempStretch: string;
-  @Prop() controlCursor: string;
-  @Prop() tempWeight: string;
-  @Prop() getMouseCursorData: string;
-  @Prop() setFontStyle: string;
-  @Prop() tempWidth: number;
+  @Prop()
+  data!: controlData
+  @Prop()
+  pageValue!: string
+  @Prop()
+  indexValue!: number
+  @Prop()
+  pageData!: controlData
+  @Prop()
+  isRunMode!: boolean
+  @Prop()
+  isEditMode!: boolean
+  @Prop()
+  isItalic!: boolean
+  @Prop()
+  tempStretch!: string
+  @Prop()
+  controlCursor!: string
+  @Prop()
+  tempWeight!: string
+  @Prop()
+  getMouseCursorData!: string
+  @Prop()
+  setFontStyle!: string
+  @Prop()
+  tempWidth!: number
 
   @Emit('isMouseDown')
   isMouseDown (indexValue: number, pageValue: string) {
@@ -291,14 +304,14 @@ export default class FDControlTabs extends Vue {
             ? this.data.properties.Style !== 1 ? '2px solid gray' : '2px solid gray'
             : '2px solid gray'
           : 'none' : '',
-      // marginBottom:
-      //   this.data.type === 'MultiPage'
-      //     ? this.data.properties.TabOrientation === 1
-      //       ? this.indexValue === this.data.properties.Value
-      //         ? '4px'
-      //         : '6px'
-      //       : ''
-      //     : '',
+      marginBottom:
+        this.data.type === 'MultiPage'
+          ? this.data.properties.TabOrientation === 1
+            ? this.indexValue === this.data.properties.Value
+              ? ''
+              : ''
+            : ''
+          : '',
       // borderRadius: '3px',
       display: 'flex',
       alignItems: 'center',
