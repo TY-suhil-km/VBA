@@ -387,6 +387,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         event.preventDefault()
         return false
       }
+      this.updateAutoSize()
     }
     event.preventDefault()
     return false
@@ -571,12 +572,12 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   updateAutoSize () {
     if (this.properties.AutoSize === true) {
       this.$nextTick(() => {
-        debugger
+        // debugger
         const textareaRef: HTMLTextAreaElement = this.textareaRef
         // replication of stype attribute to Label tag for autoSize property to work
         let tempLabel: HTMLLabelElement = this.autoSizeTextarea
         tempLabel.style.display = 'inline'
-        if (this.properties.MultiLine) {
+        if (this.properties.MultiLine && !this.fitToSizeWhenMultiLine) {
           tempLabel.style.display = 'inline-block'
           if (this.properties.SelectionMargin) {
             tempLabel.style.width = textareaRef.clientWidth - 12 + 'px'
@@ -588,8 +589,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         tempLabel.style.fontFamily = textareaRef.style.fontFamily
         tempLabel.style.fontStretch = textareaRef.style.fontStretch
         tempLabel.style.fontStyle = textareaRef.style.fontStyle
-        tempLabel.style.fontSize =
-            parseInt(textareaRef.style.fontSize) + 'px'
+        tempLabel.style.fontSize = parseInt(textareaRef.style.fontSize) + 'px'
         if (this.properties.MultiLine) {
           if (!this.properties.WordWrap) {
             tempLabel.style.whiteSpace = 'pre'
@@ -603,18 +603,27 @@ export default class FDTextBox extends Mixins(FdControlVue) {
           tempLabel.style.wordBreak = textareaRef.style.wordBreak
         }
         tempLabel.style.fontWeight = textareaRef.style.fontWeight
+        debugger
         if (this.properties.MultiLine) {
-          if (this.fitToSizeWhenMultiLine) {
+          if (this.properties.SelectionMargin) {
+            this.updateDataModel({
+              propertyName: 'Width',
+              value: tempLabel.offsetWidth + 15
+            })
             this.fitToSizeWhenMultiLine = false
-            this.updateDataModel({
-              propertyName: 'Width',
-              value: tempLabel.offsetWidth + 15
-            })
           } else {
-            this.updateDataModel({
-              propertyName: 'Width',
-              value: tempLabel.offsetWidth + 15
-            })
+            if (this.fitToSizeWhenMultiLine) {
+              this.fitToSizeWhenMultiLine = false
+              this.updateDataModel({
+                propertyName: 'Width',
+                value: tempLabel.offsetWidth + 10
+              })
+            } else {
+              this.updateDataModel({
+                propertyName: 'Width',
+                value: tempLabel.offsetWidth + 7
+              })
+            }
           }
         } else {
           this.updateDataModel({
@@ -803,25 +812,15 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   handleClick (event: MouseEvent) {
     let selectionStart = this.textareaRef.selectionStart
     let selectionEnd = this.textareaRef.selectionEnd
-    // this.textareaRef.setSelectionRange(selectionStart, selectionStart)
-    // console.log(event)
-    console.log(selectionStart, selectionEnd)
     const diff = selectionEnd - selectionStart
     if (event.offsetX < 11) {
-      console.log(selectionStart)
-      // if (selectionEnd !== selectionStart) {
-      //   selectionStart = selectionEnd
-      // }
-      console.log(this.textareaRef.selectionStart, 'start')
       this.selectionMargin(selectionStart)
     }
-    console.log(selectionStart, selectionEnd)
   }
   selectionMargin (start: number) {
     if (this.properties.SelectionMargin === true) {
       this.$nextTick(() => {
         const textareaRef: HTMLTextAreaElement = this.textareaRef
-        // replication of stype attribute to Label tag for autoSize property to work
         let tempLabel: HTMLLabelElement = this.selectionMarginRef
         if (this.properties.MultiLine) {
           tempLabel.style.display = 'inline-block'
