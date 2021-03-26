@@ -299,7 +299,8 @@ import { EventBus } from '@/FormDesigner/event-bus'
 })
 export default class FDComboBox extends Mixins(FdControlVue) {
   $el!: HTMLDivElement;
-  @Ref('textareaRef') textareaRef: HTMLTextAreaElement;
+  @Ref('textareaRef')
+  textareaRef!: HTMLTextAreaElement;
   @Ref('autoSizeTextarea') readonly autoSizeTextarea!: HTMLLabelElement;
   @Ref('hideSelectionDiv') readonly hideSelectionDiv!: HTMLDivElement;
   @Ref('comboRef') comboRef!: HTMLDivElement;
@@ -317,7 +318,7 @@ export default class FDComboBox extends Mixins(FdControlVue) {
   tempInputValue: string = '';
   tempWidth: string = '0px';
   isScrolling: boolean = false;
-  tempHeight: number;
+  tempHeight!: number;
   inBlur: boolean = false;
   headWidth: string = '100%';
   controlZIndex: number = -1;

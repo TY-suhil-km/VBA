@@ -256,6 +256,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
     this.start = this.textareaRef.selectionStart
     this.end = this.textareaRef.selectionEnd
     const eventTargetArea = event.target as HTMLTextAreaElement
+
     const controlPropData = this.properties
     if (event.target instanceof HTMLTextAreaElement) {
       if (!controlPropData.MultiLine) {
@@ -395,6 +396,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       event.preventDefault()
       if (this.properties.MultiLine) {
         this.handleCtrlAndShiftEnter(this.textareaRef, '\n')
+        // this.updateAutoSize()
       }
     }
   }
@@ -576,7 +578,11 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         tempLabel.style.display = 'inline'
         if (this.properties.MultiLine) {
           tempLabel.style.display = 'inline-block'
-          tempLabel.style.width = textareaRef.clientWidth - 4 + 'px'
+          if (this.properties.SelectionMargin) {
+            tempLabel.style.width = textareaRef.clientWidth - 12 + 'px'
+          } else {
+            tempLabel.style.width = textareaRef.clientWidth - 4 + 'px'
+          }
         }
         tempLabel.innerText = textareaRef.value
         tempLabel.style.fontFamily = textareaRef.style.fontFamily
@@ -602,12 +608,12 @@ export default class FDTextBox extends Mixins(FdControlVue) {
             this.fitToSizeWhenMultiLine = false
             this.updateDataModel({
               propertyName: 'Width',
-              value: tempLabel.offsetWidth + 7
+              value: tempLabel.offsetWidth + 15
             })
           } else {
             this.updateDataModel({
               propertyName: 'Width',
-              value: tempLabel.offsetWidth + 7
+              value: tempLabel.offsetWidth + 15
             })
           }
         } else {
@@ -628,10 +634,11 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         } else {
           this.updateDataModel({
             propertyName: 'Height',
-            value: tempLabel.offsetHeight + 20
+            value: tempLabel.offsetHeight + 15
           })
         }
         tempLabel.innerText = ''
+        tempLabel.style.display = 'inline'
         tempLabel.style.display = 'none'
       })
     } else {
@@ -648,38 +655,43 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       let selectStart = this.textareaRef.selectionStart
       let selectEnd = this.textareaRef.selectionEnd
       const text = await navigator.clipboard.readText()
-      let newText = copiedText.slice(0, selectStart) + text.slice(0, 1) + copiedText.slice(selectEnd)
+      let newText = ''
+      if (controlProp.MaxLength! > 0) {
+        let remLength = controlProp.MaxLength! - controlProp.Value!.toString().length
+        if (text.length > remLength) {
+          newText = copiedText.slice(0, selectStart) + text.slice(0, remLength) + copiedText.slice(selectEnd)
+        } else {
+          newText = copiedText.slice(0, selectStart) + text + copiedText.slice(selectEnd)
+        }
+      } else {
+        newText = copiedText.slice(0, selectStart) + text + copiedText.slice(selectEnd)
+      }
       this.updateDataModel({
         propertyName: 'Text',
         value: newText
       })
     }
     if (key === 88) {
-      if (controlProp.PasswordChar === '') {
-        const text = await navigator.clipboard.readText()
-        navigator.clipboard.writeText(text.slice(0, 1))
-      } else {
-        const text = controlProp.Value!.toString().slice(selectionStart, selectionStart + 1)
+      if (controlProp.PasswordChar !== '') {
+        const text = controlProp.Value!.toString().slice(selectionStart, selectionEnd)
         navigator.clipboard.writeText(text)
         selectionStart += 1
+        let textAfterCut = copiedText.slice(0, selectionStart - 1) + copiedText.slice(selectionEnd)
+        this.start = selectionStart - 1
+        this.end = selectionStart - 1
+        this.updateDataModel({
+          propertyName: 'Text',
+          value: textAfterCut
+        })
+        this.textareaRef.selectionStart = selectionStart
+        this.textareaRef.selectionEnd = selectionStart
       }
-      let textAfterCut = copiedText.slice(0, selectionStart - 1) + copiedText.slice(selectionEnd)
-      this.start = selectionStart - 1
-      this.end = selectionStart - 1
-      this.updateDataModel({
-        propertyName: 'Text',
-        value: textAfterCut
-      })
-      this.textareaRef.selectionStart = selectionStart
-      this.textareaRef.selectionEnd = selectionStart
     }
     if (key === 67) {
-      if (controlProp.PasswordChar === '') {
-        const text = await navigator.clipboard.readText()
-        navigator.clipboard.writeText(text.slice(0, 1))
-      } else {
+      if (controlProp.PasswordChar !== '') {
         let selectionStart = this.textareaRef.selectionStart
-        const text = controlProp.Value!.toString().slice(selectionStart, selectionStart + 1)
+        let selectionEnd = this.textareaRef.selectionEnd
+        const text = controlProp.Value!.toString().slice(selectionStart, selectionEnd)
         navigator.clipboard.writeText(text)
       }
     }
@@ -789,20 +801,21 @@ export default class FDTextBox extends Mixins(FdControlVue) {
    * @event click
    */
   handleClick (event: MouseEvent) {
-    const selectionStart = this.textareaRef.selectionStart
-    const selectionEnd = this.textareaRef.selectionEnd
-    if (selectionEnd !== selectionStart) {
-      this.textareaRef.setSelectionRange(selectionStart, selectionStart)
-    }
+    let selectionStart = this.textareaRef.selectionStart
+    let selectionEnd = this.textareaRef.selectionEnd
+    // this.textareaRef.setSelectionRange(selectionStart, selectionStart)
+    // console.log(event)
+    console.log(selectionStart, selectionEnd)
+    const diff = selectionEnd - selectionStart
     if (event.offsetX < 11) {
-      this.textareaRef.dispatchEvent(new MouseEvent('selectionChange'))
-      let lineEnd = this.textareaRef.value.length
-      if (this.textareaRef.value.slice(selectionStart).includes('\n')) {
-        lineEnd = this.textareaRef.value.indexOf('\n')
-      }
-      this.textareaRef.setSelectionRange(selectionStart, lineEnd)
+      console.log(selectionStart)
+      // if (selectionEnd !== selectionStart) {
+      //   selectionStart = selectionEnd
+      // }
+      console.log(this.textareaRef.selectionStart, 'start')
       this.selectionMargin(selectionStart)
     }
+    console.log(selectionStart, selectionEnd)
   }
   selectionMargin (start: number) {
     if (this.properties.SelectionMargin === true) {
@@ -812,7 +825,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         let tempLabel: HTMLLabelElement = this.selectionMarginRef
         if (this.properties.MultiLine) {
           tempLabel.style.display = 'inline-block'
-          tempLabel.style.width = textareaRef.clientWidth - 14 + 'px'
+          tempLabel.style.width = textareaRef.clientWidth - 12 + 'px'
         }
         tempLabel.style.whiteSpace = 'nowrap'
         tempLabel.style.fontFamily = textareaRef.style.fontFamily
@@ -823,6 +836,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
         tempLabel.style.fontSize = parseInt(textareaRef.style.fontSize) + 'px'
         let initHeight = 0
         let finalIndex = 0
+        let isSpacepresent = false
         for (let i = start; i < this.textareaRef.value.length; i++) {
           tempLabel.innerText = tempLabel.innerText + textareaRef.value[i]
           if (i === start) {
@@ -833,11 +847,22 @@ export default class FDTextBox extends Mixins(FdControlVue) {
               tempLabel.innerText = ''
               tempLabel.style.display = 'none'
               break
-            }
-            for (let j = i; j >= 0; j--) {
-              if (tempLabel.innerText[j] === ' ') {
-                finalIndex = j - 1
-                break
+            } else {
+              for (let j = i; j >= 0; j--) {
+                if (tempLabel.innerText[j] === ' ') {
+                  isSpacepresent = true
+                  break
+                }
+              }
+              if (isSpacepresent) {
+                for (let j = i; j >= 0; j--) {
+                  if (tempLabel.innerText[j] === ' ') {
+                    finalIndex = j - 1
+                    break
+                  }
+                }
+              } else {
+                finalIndex = i - 1
               }
             }
             tempLabel.innerText = ''
@@ -849,7 +874,11 @@ export default class FDTextBox extends Mixins(FdControlVue) {
             tempLabel.style.display = 'none'
           }
         }
-        this.textareaRef.setSelectionRange(start, start + finalIndex + 1)
+        if (!isSpacepresent) {
+          this.textareaRef.setSelectionRange(start, finalIndex + 1)
+        } else {
+          this.textareaRef.setSelectionRange(start, start + finalIndex + 1)
+        }
       })
     }
   }
@@ -916,7 +945,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   }
   @Watch('properties.SelectionMargin')
   selectionMarginValidate () {
-    // m
     if (this.properties.AutoSize) {
       this.updateAutoSize()
     }
