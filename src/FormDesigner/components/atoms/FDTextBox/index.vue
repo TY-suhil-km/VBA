@@ -120,6 +120,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   fitToSizeWhenMultiLine: boolean = false
   start: number = 0
   end: number = 0
+  autoSizeAfterEnter: boolean = false
   get outerTextBox () {
     return {
       cursor: this.controlCursor
@@ -366,6 +367,8 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       this.textareaRef.focus()
       this.start = this.end = selStart + 1
     }
+    this.autoSizeAfterEnter = true
+    this.updateAutoSize()
   }
   /**
    * @description EnterKeyBehavior - if true when enter is pressed while editing the cursor moves to next line
@@ -572,83 +575,83 @@ export default class FDTextBox extends Mixins(FdControlVue) {
   updateAutoSize () {
     if (this.properties.AutoSize === true) {
       this.$nextTick(() => {
-        // debugger
-        const textareaRef: HTMLTextAreaElement = this.textareaRef
-        // replication of stype attribute to Label tag for autoSize property to work
-        let tempLabel: HTMLLabelElement = this.autoSizeTextarea
-        tempLabel.style.display = 'inline'
-        if (this.properties.MultiLine && !this.fitToSizeWhenMultiLine) {
-          tempLabel.style.display = 'inline-block'
-          if (this.properties.SelectionMargin) {
-            tempLabel.style.width = textareaRef.clientWidth - 12 + 'px'
-          } else {
-            tempLabel.style.width = textareaRef.clientWidth - 4 + 'px'
-          }
-        }
-        tempLabel.innerText = textareaRef.value
-        tempLabel.style.fontFamily = textareaRef.style.fontFamily
-        tempLabel.style.fontStretch = textareaRef.style.fontStretch
-        tempLabel.style.fontStyle = textareaRef.style.fontStyle
-        tempLabel.style.fontSize = parseInt(textareaRef.style.fontSize) + 'px'
-        if (this.properties.MultiLine) {
-          if (!this.properties.WordWrap) {
-            tempLabel.style.whiteSpace = 'pre'
-            tempLabel.style.wordBreak = textareaRef.style.wordBreak
-          } else {
-            tempLabel.style.whiteSpace = 'break-spaces'
-            tempLabel.style.wordBreak = 'break-word'
-          }
+        if (this.properties.Value === '') {
+          this.updateDataModel({
+            propertyName: 'Height',
+            value: parseInt(this.textareaRef.style.fontSize) + 15
+          })
+          this.updateDataModel({
+            propertyName: 'Width',
+            value: parseInt(this.textareaRef.style.fontSize) + 12
+          })
         } else {
-          tempLabel.style.whiteSpace = 'pre'
-          tempLabel.style.wordBreak = textareaRef.style.wordBreak
-        }
-        tempLabel.style.fontWeight = textareaRef.style.fontWeight
-        debugger
-        if (this.properties.MultiLine) {
-          if (this.properties.SelectionMargin) {
+          if (!this.properties.MultiLine) {
+            this.textareaRef.style.width = '0px'
             this.updateDataModel({
               propertyName: 'Width',
-              value: tempLabel.offsetWidth + 15
+              value: this.textareaRef.scrollWidth + 8
             })
-            this.fitToSizeWhenMultiLine = false
+            this.updateDataModel({
+              propertyName: 'Height',
+              value: parseInt(this.textareaRef.style.fontSize) + 15
+            })
           } else {
-            if (this.fitToSizeWhenMultiLine) {
-              this.fitToSizeWhenMultiLine = false
+            const textareaRef: HTMLTextAreaElement = this.textareaRef
+            // replication of stype attribute to Label tag for autoSize property to work
+            let tempLabel: HTMLLabelElement = this.autoSizeTextarea
+            tempLabel.style.display = 'inline-block'
+            if (this.properties.SelectionMargin) {
+              tempLabel.style.width = textareaRef.clientWidth - 12 + 'px'
+            } else {
+              tempLabel.style.width = textareaRef.clientWidth - 4 + 'px'
+            }
+            tempLabel.innerText = textareaRef.value
+            tempLabel.style.fontFamily = textareaRef.style.fontFamily
+            tempLabel.style.fontStretch = textareaRef.style.fontStretch
+            tempLabel.style.fontStyle = textareaRef.style.fontStyle
+            tempLabel.style.backgroundColor = 'yellow'
+            tempLabel.style.fontSize = parseInt(textareaRef.style.fontSize) + 'px'
+            if (!this.properties.WordWrap) {
+              tempLabel.style.whiteSpace = 'pre'
+              tempLabel.style.wordBreak = textareaRef.style.wordBreak
+            } else {
+              tempLabel.style.whiteSpace = 'break-spaces'
+              tempLabel.style.wordBreak = 'break-word'
+            }
+            let initHeight = tempLabel.offsetHeight
+            let initWidth = tempLabel.offsetWidth
+            debugger
+            tempLabel.style.whiteSpace = ''
+            tempLabel.style.wordBreak = ''
+            for (let i = initWidth; i > 0; i--) {
+              tempLabel.style.width = i + 'px'
+              if (tempLabel.offsetHeight > initHeight || tempLabel.scrollWidth > tempLabel.offsetWidth) {
+                this.updateDataModel({
+                  propertyName: 'Width',
+                  value: i + 15
+                })
+                console.log(i)
+                break
+              }
+            }
+            tempLabel.style.whiteSpace = 'break-spaces'
+            tempLabel.style.wordBreak = 'break-word'
+            if (this.autoSizeAfterEnter) {
               this.updateDataModel({
-                propertyName: 'Width',
-                value: tempLabel.offsetWidth + 10
+                propertyName: 'Height',
+                value: initHeight + (parseInt(textareaRef.style.fontSize) > 15 ? parseInt(textareaRef.style.fontSize) : 15) + 10
               })
+              this.autoSizeAfterEnter = false
             } else {
               this.updateDataModel({
-                propertyName: 'Width',
-                value: tempLabel.offsetWidth + 7
+                propertyName: 'Height',
+                value: initHeight + (parseInt(textareaRef.style.fontSize) > 15 ? parseInt(textareaRef.style.fontSize) : 15)
               })
             }
+            tempLabel.style.display = 'none'
+            tempLabel.innerText = ''
           }
-        } else {
-          this.updateDataModel({
-            propertyName: 'Width',
-            value: tempLabel.offsetWidth + 14
-          })
         }
-        if (this.textareaRef.value === ' ' || this.textareaRef.value === '') {
-          this.updateDataModel({
-            propertyName: 'Height',
-            value: parseInt(textareaRef.style.fontSize) + 15
-          })
-          this.updateDataModel({
-            propertyName: 'Width',
-            value: parseInt(textareaRef.style.fontSize) + 12
-          })
-        } else {
-          this.updateDataModel({
-            propertyName: 'Height',
-            value: tempLabel.offsetHeight + 15
-          })
-        }
-        tempLabel.innerText = ''
-        tempLabel.style.display = 'inline'
-        tempLabel.style.display = 'none'
       })
     } else {
       return undefined
@@ -777,6 +780,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
       } else {
         return undefined
       }
+      this.updateAutoSize()
     } else {
       throw new Error('Expected HTMLTextAreaElement but found different element')
     }
