@@ -603,7 +603,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
           })
           this.updateDataModel({
             propertyName: 'Width',
-            value: parseInt(this.textareaRef.style.fontSize) + 12
+            value: 15
           })
         } else {
           if (!this.properties.MultiLine) {
@@ -665,18 +665,19 @@ export default class FDTextBox extends Mixins(FdControlVue) {
             let initWidth = tempLabel.offsetWidth
             tempLabel.style.whiteSpace = ''
             tempLabel.style.wordBreak = ''
-            for (let i = initWidth; i > 0; i--) {
+            debugger
+            for (let i = initWidth; i >= 0; i--) {
               tempLabel.style.width = i + 'px'
               if (tempLabel.offsetHeight > initHeight || tempLabel.scrollWidth > tempLabel.offsetWidth) {
                 this.updateDataModel({
                   propertyName: 'Width',
-                  value: i + (this.properties.SelectionMargin ? 15 : 7)
+                  value: i + (this.properties.SelectionMargin ? tempLabel.offsetWidth === 0 ? (parseInt(this.textareaRef.style.fontSize) - 15) : 15 : 7)
                 })
                 if (this.fitToSizeWhenMultiLine) {
                   this.fitToSizeWhenMultiLine = false
                   this.updateDataModel({
                     propertyName: 'Width',
-                    value: i + (this.properties.SelectionMargin ? 15 : 7)
+                    value: i + (this.properties.SelectionMargin ? tempLabel.offsetWidth === 0 ? (parseInt(this.textareaRef.style.fontSize) - 15) : 15 : 7)
                   })
                 }
                 break
@@ -700,6 +701,7 @@ export default class FDTextBox extends Mixins(FdControlVue) {
             tempLabel.innerText = ''
           }
         }
+        this.textareaRef.scrollTop = 0
       })
     } else {
       return undefined
@@ -932,7 +934,13 @@ export default class FDTextBox extends Mixins(FdControlVue) {
           }
         }
         if (!isSpacepresent) {
-          this.textareaRef.setSelectionRange(start, finalIndex + 1)
+          if (finalIndex < start) {
+            this.textareaRef.setSelectionRange(start, start + 1)
+            tempLabel.innerText = ''
+            tempLabel.style.display = 'none'
+          } else {
+            this.textareaRef.setSelectionRange(start, finalIndex + 1)
+          }
         } else {
           this.textareaRef.setSelectionRange(start, start + finalIndex + 1)
         }
