@@ -8,7 +8,7 @@
       :isPropChanged="isPropChanged"
       @deActiveControl="deActiveControl"
       @dragSelectorControl="event => dragSelectorControl(event)"
-      @addControlObj="event => addControlObj(event)"
+      @addControlObj="event => checkAddControlObj(event)"
       @updateMousedownVar="updateMousedownVar"
     >
     <div :style="childDiv" ref="childDivRef" @scroll="updateScroll">
@@ -786,6 +786,7 @@ export default class Container extends FDCommonMethod {
 
   @Emit('deActiveControl')
   deActiveControl (event: MouseEvent) {
+    this.dsMousedownContainer = true
     return event
   }
   @Emit('dragSelectorControl')
@@ -795,6 +796,12 @@ export default class Container extends FDCommonMethod {
   @Emit('addControlObj')
   addControlObj (event: MouseEvent) {
     return event
+  }
+  checkAddControlObj (event: MouseEvent) {
+    if (this.dsMousedownContainer) {
+      this.dsMousedownContainer = false
+      this.addControlObj(event)
+    }
   }
   updateIsControlMove (val: boolean) {
     this.isControlMove = val

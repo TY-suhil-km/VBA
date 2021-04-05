@@ -1331,19 +1331,6 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
             } else if (this.properties.Style as number === 0) {
               this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
             }
-          //   if (j === this.properties.Value) {
-          //     if (this.properties.Style as number === 1) {
-          //       this.rowsCount = this.rowsCount + (parseInt(a) + 5 + 'px') + ' '
-          //     } else if (this.properties.Style as number === 0) {
-          //       this.rowsCount = this.rowsCount + (parseInt(a) + 4 + 'px') + ' '
-          //     }
-          //   } else {
-          //     if (this.properties.Style as number === 1) {
-          //       this.rowsCount = this.rowsCount + (parseInt(a) + 3 + 'px') + ' '
-          //     } else if (this.properties.Style as number === 0) {
-          //       this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
-          //     }
-          //   }
           }
         } else {
           for (let j = 0; j < Math.trunc(count); j++) {
@@ -1352,19 +1339,6 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
             } else if (this.properties.Style as number === 0) {
               this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
             }
-            // if (j === k) {
-            //   if (this.properties.Style as number === 1) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 7 + 'px') + ' '
-            //   } else if (this.properties.Style as number === 0) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 4 + 'px') + ' '
-            //   }
-            // } else {
-            //   if (this.properties.Style as number === 1) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 3 + 'px') + ' '
-            //   } else if (this.properties.Style as number === 0) {
-            //     this.rowsCount = this.rowsCount + (parseInt(a) + 'px') + ' '
-            //   }
-            // }
           }
         }
         const moveHeight = controlProp.Height
@@ -1434,6 +1408,12 @@ export default class FDMultiPage extends Mixins(FdContainerVue) {
           myref.style.height = ''
           mydivref.style.height = ''
           mydivref.style.marginTop = ''
+        }
+      } else if (controlProp.TabFixedHeight !== 0) {
+        for (let index = 0; index < pagecount; index++) {
+          const mydivref = this.scrolling.children[index] as HTMLDivElement
+          mydivref.style.marginTop = ''
+          mydivref.style.height = controlProp.TabFixedHeight! + (controlProp!.Style === 1 ? 18 : 10) + 'px'
         }
       }
     } else if (controlProp.TabFixedHeight === 0) {

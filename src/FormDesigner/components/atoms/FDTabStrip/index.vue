@@ -805,6 +805,12 @@ export default class FDTabStrip extends FdControlVue {
               }
             }
           }
+        } else if (controlProp.TabFixedHeight !== 0) {
+          for (let index = 0; index < pagecount; index++) {
+            const mydivref = this.scrolling.children[index] as HTMLDivElement
+            mydivref.style.marginTop = ''
+            mydivref.style.height = controlProp.TabFixedHeight! + (controlProp!.Style === 1 ? 22 : 10) + 'px'
+          }
         }
       } else if (controlProp.TabFixedHeight === 0) {
         for (let index = 0; index < pagecount; index++) {

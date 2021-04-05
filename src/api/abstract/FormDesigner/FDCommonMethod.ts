@@ -19,6 +19,7 @@ export default class FDCommonMethod extends Vue {
   mouseDownContainer: string = ''
   isControlMouseDown: boolean = false
   isUserFormSelected: boolean = false
+  dsMousedownContainer: boolean = false
 
   getLowestIndex (tempControls: string[], controlLength: number, propertyType: boolean) {
     let lastControlId = controlLength
@@ -112,42 +113,11 @@ export default class FDCommonMethod extends Vue {
       }
     }
   }
-  swapZIndex (tempZIndex: number) {
-    const userData = this.userformData[this.userFormId]
-    const container = this.selectedControls[this.userFormId].container[0]
-    const selected = this.selectedControls[this.userFormId].selected[0]
-    const swapTabIndex = userData[selected].extraDatas!.zIndex!
-    if (tempZIndex <= userData[container].controls.length && tempZIndex > 0) {
-      const index = userData[container].controls.findIndex(
-        (val) => userData[val].extraDatas!.zIndex === tempZIndex
-      )
-      this.updateExtraDatas(userData[container].controls[index], 'zIndex', swapTabIndex)
-      this.updateExtraDatas(selected, 'zIndex', tempZIndex)
-    }
-  }
   updateZIndexValue (id: string) {
     const userData = this.userformData[this.userFormId]
     const container = this.getContainerList(id)[0]
-    const containerControls = this.userformData[this.userFormId][container].controls
-    const controlType = userData[id].type
-    if (controlType === 'MultiPage' || controlType === 'Frame' || controlType === 'ListBox') {
-      this.updateExtraDatas(id, 'zIndex', userData[container].controls.length)
-    } else {
-      const tempControls = []
-      for (const index in containerControls) {
-        const cntrlData = this.userformData[this.userFormId][containerControls[index]]
-        if (cntrlData.type === 'MultiPage' || cntrlData.type === 'Frame' || cntrlData.type === 'ListBox') {
-          tempControls.push(containerControls[index])
-        }
-      }
-      const lastControlId = tempControls.length > 0 ? this.getLowestIndex(tempControls, userData[container].controls.length, true)
-        : this.userformData[this.userFormId][container].controls.length
-      this.updateExtraDatas(id, 'zIndex', lastControlId)
-      for (const index of tempControls) {
-        const cntrlZIndex = this.userformData[this.userFormId][index].extraDatas!.zIndex!
-        this.updateExtraDatas(index, 'zIndex', cntrlZIndex + 1)
-      }
-    }
+    const lastControlId = userData[container].controls.length
+    this.updateExtraDatas(id, 'zIndex', lastControlId)
   }
   updateTabIndexValue (id: string) {
     const userData = this.userformData[this.userFormId]

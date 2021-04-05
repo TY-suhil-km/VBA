@@ -665,7 +665,6 @@ export default class FDTextBox extends Mixins(FdControlVue) {
             let initWidth = tempLabel.offsetWidth
             tempLabel.style.whiteSpace = ''
             tempLabel.style.wordBreak = ''
-            debugger
             for (let i = initWidth; i >= 0; i--) {
               tempLabel.style.width = i + 'px'
               if (tempLabel.offsetHeight > initHeight || tempLabel.scrollWidth > tempLabel.offsetWidth) {
